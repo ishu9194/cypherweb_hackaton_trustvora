@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model User {
+  id             String         @id @default(cuid())
+  walletAddress  String?        @unique
+  email          String?        @unique
+  name           String         @default("Anonymous User")
+  trustScore     Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  verifications  Verification[]
+  trustLogs      TrustLog[]
+}
+
+model Verification {
+  id           String              @id @default(cuid())
+  userId       String
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  claimType    String              @default("GENERAL_CREDENTIAL")
+  claimData    String
+  status       VerificationStatus  @default(PENDING)
+  scoreImpact  Int                 @default(0)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([userId])
+}
+
+model TrustLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action      String
+  pointsDelta Int
+  newScore    Int
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
