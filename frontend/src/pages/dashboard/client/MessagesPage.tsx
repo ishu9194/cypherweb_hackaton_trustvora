@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Check, CheckCheck, Mic, Paperclip, Image as ImageIcon, Send, Smile, FileText } from "lucide-react";
+import { Check, CheckCheck, MessageSquare, Mic, Paperclip, Image as ImageIcon, Send, Smile, FileText } from "lucide-react";
 import { CONVERSATIONS, type ChatMessage } from "@/data/dashboardExtras.data";
 import { Avatar } from "@/components/ui/avatar";
 import { SearchBox } from "@/components/ui/search-box";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toaster";
+import { EmptyState } from "@/components/states/EmptyState";
+import { ROUTES } from "@/constants/routes.constants";
 import { formatTime, cn } from "@/lib/utils";
 
 const EMOJIS = ["👍", "❤️", "😂", "🙏", "🎉", "👏", "😊", "🔥"];
@@ -61,6 +64,19 @@ export function MessagesPage() {
     toast.success(`${type === "voice" ? "Voice message" : "File"} sent`);
   };
 
+  if (conversations.length === 0) {
+    return (
+      <div className="flex h-[calc(100vh-8rem)] items-center justify-center rounded-2xl border border-border bg-surface">
+        <EmptyState
+          icon={<MessageSquare className="h-5 w-5" />}
+          title="No messages in inbox"
+          description="Start a conversation from any lawyer's profile to see it here."
+          action={<Button size="sm" asChild><Link to={ROUTES.findLawyers}>Browse lawyers</Link></Button>}
+        />
+      </div>
+    );
+  }
+
   if (!active) return null;
 
   return (
@@ -72,6 +88,9 @@ export function MessagesPage() {
           <SearchBox placeholder="Search conversations…" onSearch={setQuery} className="mt-3" />
         </div>
         <div className="flex-1 overflow-y-auto">
+          {filtered.length === 0 && (
+            <p className="p-4 text-center text-sm text-muted-foreground">No conversations match “{query}”.</p>
+          )}
           {filtered.map((conv) => (
             <button
               key={conv.id}

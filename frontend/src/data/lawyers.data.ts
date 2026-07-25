@@ -1,6 +1,20 @@
-import type { Lawyer } from "@/types";
+import type { ConsultationType, Lawyer } from "@/types";
 
-export const LAWYERS: Lawyer[] = [
+// Raw seed data doesn't include consultationTypes directly — it's derived below
+// deterministically from each lawyer's id so the mock data stays consistent
+// across reloads while still giving the consultation-type filter real variety.
+type RawLawyer = Omit<Lawyer, "consultationTypes">;
+
+function deriveConsultationTypes(lawyer: RawLawyer): ConsultationType[] {
+  const hash = lawyer.id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const types: ConsultationType[] = ["chat"]; // every lawyer offers async chat
+  if (lawyer.online || hash % 2 === 0) types.push("video");
+  if (hash % 3 !== 0) types.push("voice");
+  if (hash % 4 === 0) types.push("office");
+  return types;
+}
+
+const RAW_LAWYERS: RawLawyer[] = [
   {
     id: "lw-001",
     name: "Adv. Priya Sharma",
@@ -278,3 +292,8 @@ export const LAWYERS: Lawyer[] = [
     joinedAt: "2022-12-01T00:00:00",
   },
 ];
+
+export const LAWYERS: Lawyer[] = RAW_LAWYERS.map((lawyer) => ({
+  ...lawyer,
+  consultationTypes: deriveConsultationTypes(lawyer),
+}));

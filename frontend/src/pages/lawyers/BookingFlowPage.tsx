@@ -45,6 +45,7 @@ export function BookingFlowPage() {
   const [files, setFiles] = useState<UploadedDoc[]>([]);
   const [paymentMethod, setPaymentMethod] = useState("upi");
   const [couponApplied, setCouponApplied] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const clientDetailsRef = useRef<ClientDetailsStepHandle>(null);
 
@@ -78,6 +79,10 @@ export function BookingFlowPage() {
 
   const handleConfirmAndPay = async () => {
     if (!date || !time || !consultationType) return;
+    if (!termsAccepted) {
+      toast.error("Please accept the Terms & Conditions to confirm your booking");
+      return;
+    }
     setIsSubmitting(true);
     try {
       const [hourMinute, meridiem] = time.split(" ");
@@ -155,6 +160,8 @@ export function BookingFlowPage() {
                 onPaymentMethodChange={setPaymentMethod}
                 couponApplied={couponApplied}
                 onApplyCoupon={() => setCouponApplied(true)}
+                termsAccepted={termsAccepted}
+                onTermsAcceptedChange={setTermsAccepted}
               />
             )}
           </motion.div>
@@ -171,7 +178,13 @@ export function BookingFlowPage() {
               <ArrowRight className="h-4 w-4" />
             </Button>
           ) : (
-            <Button onClick={handleConfirmAndPay} isLoading={isSubmitting}>
+            <Button
+              onClick={handleConfirmAndPay}
+              isLoading={isSubmitting}
+              disabled={!termsAccepted}
+              aria-disabled={!termsAccepted}
+              title={!termsAccepted ? "Accept the Terms & Conditions to continue" : undefined}
+            >
               <ShieldCheck className="h-4 w-4" />
               Confirm & Pay
             </Button>

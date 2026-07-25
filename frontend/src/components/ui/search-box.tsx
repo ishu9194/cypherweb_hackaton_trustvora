@@ -8,10 +8,11 @@ interface SearchBoxProps {
   onSearch: (query: string) => void;
   className?: string;
   debounceMs?: number;
+  defaultValue?: string;
 }
 
-export function SearchBox({ placeholder = "Search…", onSearch, className, debounceMs = 300 }: SearchBoxProps) {
-  const [query, setQuery] = useState("");
+export function SearchBox({ placeholder = "Search…", onSearch, className, debounceMs = 300, defaultValue = "" }: SearchBoxProps) {
+  const [query, setQuery] = useState(defaultValue);
   const debouncedQuery = useDebounce(query, debounceMs);
 
   useEffect(() => {

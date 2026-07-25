@@ -2,6 +2,13 @@ import { X } from "lucide-react";
 import { EXPERIENCE_BOUNDS, FEE_BOUNDS, type LawyerFilterState } from "@/lib/lawyerFilters";
 import { formatCurrency } from "@/lib/utils";
 
+const CONSULTATION_TYPE_LABELS: Record<string, string> = {
+  video: "Video",
+  voice: "Phone",
+  chat: "Chat",
+  office: "In-Person",
+};
+
 interface Chip {
   label: string;
   onRemove: () => void;
@@ -24,6 +31,12 @@ export function ActiveFilterChips({ filters, onChange, onClearAll }: ActiveFilte
   if (filters.court) chips.push({ label: filters.court, onRemove: () => onChange("court", null) });
   filters.languages.forEach((lang) =>
     chips.push({ label: lang, onRemove: () => onChange("languages", filters.languages.filter((l) => l !== lang)) }),
+  );
+  filters.consultationTypes.forEach((type) =>
+    chips.push({
+      label: CONSULTATION_TYPE_LABELS[type] ?? type,
+      onRemove: () => onChange("consultationTypes", filters.consultationTypes.filter((t) => t !== type)),
+    }),
   );
   if (filters.experienceRange[0] !== EXPERIENCE_BOUNDS[0] || filters.experienceRange[1] !== EXPERIENCE_BOUNDS[1]) {
     chips.push({

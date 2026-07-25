@@ -12,10 +12,18 @@ enum VerificationStatus {
   REJECTED
 }
 
+enum Role {
+  CLIENT
+  LAWYER
+  ADMIN
+}
+
 model User {
   id             String         @id @default(cuid())
   walletAddress  String?        @unique
   email          String?        @unique
+  passwordHash   String?
+  role           Role           @default(CLIENT)
   name           String         @default("Anonymous User")
   trustScore     Int            @default(0)
   createdAt      DateTime       @default(now())
@@ -23,6 +31,8 @@ model User {
 
   verifications  Verification[]
   trustLogs      TrustLog[]
+  lawyerProfile  Lawyer?
+  reviewsWritten Review[]
 }
 
 model Verification {
@@ -50,4 +60,67 @@ model TrustLog {
   createdAt   DateTime @default(now())
 
   @@index([userId])
+}
+
+/// Lawyer marketplace profile. One-to-one with User so a lawyer can log in
+/// with the same auth flow as a client (role = LAWYER).
+model Lawyer {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name                 String
+  avatarUrl            String
+  verified             Boolean  @default(false)
+  online               Boolean  @default(false)
+  gender               String
+  experienceYears      Int
+  qualification        String
+  court                String
+  languages            String[]
+  specializations      String[]
+  rating               Float    @default(0)
+  reviewCount          Int      @default(0)
+  consultationFee      Int
+  consultationTypes    String[]
+  responseTimeMinutes  Int
+  city                 String
+  state                String
+  bio                  String
+  casesWon             Int      @default(0)
+  successRate          Int      @default(0)
+  joinedAt             DateTime @default(now())
+
+  reviews              Review[]
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([city])
+  @@index([rating])
+  @@index([consultationFee])
+}
+
+model PracticeArea {
+  id           String @id
+  name         String @unique
+  icon         String
+  description  String
+  casesServed  Int    @default(0)
+}
+
+model Review {
+  id              String   @id @default(cuid())
+  lawyerId        String
+  lawyer          Lawyer   @relation(fields: [lawyerId], references: [id], onDelete: Cascade)
+  authorId        String?
+  author          User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  authorName      String
+  authorAvatarUrl String?
+  rating          Int
+  comment         String
+  verifiedClient  Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([lawyerId])
 }

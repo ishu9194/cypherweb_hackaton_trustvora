@@ -21,6 +21,7 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "relevance", label: "Relevance" },
   { value: "rating", label: "Highest Rated" },
   { value: "experience", label: "Most Experienced" },
+  { value: "reviews", label: "Most Reviews" },
   { value: "fee-low", label: "Fee: Low to High" },
   { value: "fee-high", label: "Fee: High to Low" },
   { value: "newest", label: "Newest" },

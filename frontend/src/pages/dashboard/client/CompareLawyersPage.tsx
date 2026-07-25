@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { GitCompareArrows } from "lucide-react";
 import { LAWYERS } from "@/data/lawyers.data";
-import { useCompareStore } from "@/hooks/useCompareStore";
+import { MAX_COMPARE, useCompareStore } from "@/hooks/useCompareStore";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,7 +18,7 @@ export function CompareLawyersPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-display text-xl font-bold text-foreground">Compare Lawyers</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Compare up to 3 lawyers side by side.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Compare up to {MAX_COMPARE} lawyers side by side.</p>
         </div>
         {lawyers.length > 0 && <Button variant="outline" size="sm" onClick={clearCompare}>Clear all</Button>}
       </div>

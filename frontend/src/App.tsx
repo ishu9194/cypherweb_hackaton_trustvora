@@ -6,6 +6,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Loader } from "@/components/ui/loader";
+import { DevRoleSwitcher } from "@/components/dev/DevRoleSwitcher";
 
 import { MainLayout } from "@/layouts/MainLayout";
 import { AuthLayout } from "@/layouts/AuthLayout";
@@ -186,6 +187,7 @@ function App() {
               </AnimatePresence>
             </Suspense>
             <Toaster />
+            <DevRoleSwitcher />
           </TooltipProvider>
         </AuthProvider>
       </ThemeProvider>

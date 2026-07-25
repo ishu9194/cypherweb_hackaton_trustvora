@@ -1,6 +1,6 @@
 import { useCallback, useState, type Dispatch, type SetStateAction } from "react";
 import { motion } from "framer-motion";
-import { File, Upload, X } from "lucide-react";
+import { AlertCircle, File, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface UploadedDoc {
@@ -15,18 +15,47 @@ interface DocumentUploadStepProps {
   onFilesChange: Dispatch<SetStateAction<UploadedDoc[]>>;
 }
 
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+const ACCEPTED_EXTENSIONS = ["pdf", "jpg", "jpeg", "png", "docx", "doc"];
+
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function getExtension(filename: string) {
+  return filename.split(".").pop()?.toLowerCase() ?? "";
+}
+
 export function DocumentUploadStep({ files, onFilesChange }: DocumentUploadStepProps) {
   const [dragging, setDragging] = useState(false);
+  const [rejections, setRejections] = useState<string[]>([]);
 
   const addFiles = useCallback(
     (fileList: FileList) => {
-      const newDocs: UploadedDoc[] = Array.from(fileList).map((file) => ({
+      const incoming = Array.from(fileList);
+      const accepted: File[] = [];
+      const newRejections: string[] = [];
+
+      incoming.forEach((file) => {
+        const extension = getExtension(file.name);
+        if (!ACCEPTED_EXTENSIONS.includes(extension)) {
+          newRejections.push(`${file.name} — unsupported file type (PDF, JPG, PNG, or DOCX only)`);
+          return;
+        }
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+          newRejections.push(`${file.name} — exceeds the 10MB size limit`);
+          return;
+        }
+        accepted.push(file);
+      });
+
+      setRejections(newRejections);
+
+      if (accepted.length === 0) return;
+
+      const newDocs: UploadedDoc[] = accepted.map((file) => ({
         id: `${file.name}-${Date.now()}-${Math.random()}`,
         name: file.name,
         sizeLabel: formatSize(file.size),
@@ -71,10 +100,22 @@ export function DocumentUploadStep({ files, onFilesChange }: DocumentUploadStepP
         <input
           type="file"
           multiple
+          accept=".pdf,.jpg,.jpeg,.png,.docx,.doc"
           className="hidden"
           onChange={(e) => e.target.files && addFiles(e.target.files)}
         />
       </label>
+
+      {rejections.length > 0 && (
+        <div className="mt-3 space-y-1.5 rounded-lg border border-danger/30 bg-danger/5 p-3">
+          {rejections.map((reason) => (
+            <p key={reason} className="flex items-start gap-2 text-xs font-medium text-danger">
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              {reason}
+            </p>
+          ))}
+        </div>
+      )}
 
       {files.length > 0 && (
         <div className="mt-5 space-y-3">

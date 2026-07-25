@@ -4,6 +4,7 @@ import type { ConsultationType, Lawyer } from "@/types";
 import { RadioGroup } from "@/components/ui/radio";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/toaster";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -30,10 +31,13 @@ interface PaymentSummaryStepProps {
   onPaymentMethodChange: (method: string) => void;
   couponApplied: boolean;
   onApplyCoupon: () => void;
+  termsAccepted: boolean;
+  onTermsAcceptedChange: (accepted: boolean) => void;
 }
 
 export function PaymentSummaryStep({
   lawyer, consultationType, date, time, paymentMethod, onPaymentMethodChange, couponApplied, onApplyCoupon,
+  termsAccepted, onTermsAcceptedChange,
 }: PaymentSummaryStepProps) {
   const [couponCode, setCouponCode] = useState("");
   const platformFee = 49;
@@ -104,6 +108,15 @@ export function PaymentSummaryStep({
           options={PAYMENT_METHODS.map((m) => ({ value: m.value, label: m.label }))}
           value={paymentMethod}
           onValueChange={onPaymentMethodChange}
+        />
+      </div>
+
+      <div className="mt-6 rounded-xl border border-border bg-surface-sunken p-4">
+        <Checkbox
+          checked={termsAccepted}
+          onCheckedChange={onTermsAcceptedChange}
+          label="I agree to the Terms & Conditions and Cancellation Policy"
+          description="You must accept these to confirm your booking."
         />
       </div>
     </div>

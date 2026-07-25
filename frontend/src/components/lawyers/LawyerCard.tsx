@@ -10,7 +10,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/toaster";
 import { ROUTES } from "@/constants/routes.constants";
 import { formatCurrency, cn } from "@/lib/utils";
-import { useCompareStore } from "@/hooks/useCompareStore";
+import { MAX_COMPARE, useCompareStore } from "@/hooks/useCompareStore";
 import { useFavoritesStore } from "@/hooks/useFavoritesStore";
 
 interface LawyerCardProps {
@@ -34,7 +34,7 @@ export function LawyerCard({ lawyer, className }: LawyerCardProps) {
 
   const handleToggleCompare = () => {
     if (!compared && isFull) {
-      toast.error("You can compare up to 3 lawyers at a time");
+      toast.error(`You can compare up to ${MAX_COMPARE} lawyers at a time`);
       return;
     }
     toggleCompare(lawyer.id);

@@ -9,7 +9,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/toaster";
 import { ROUTES } from "@/constants/routes.constants";
 import { formatCurrency, cn } from "@/lib/utils";
-import { useCompareStore } from "@/hooks/useCompareStore";
+import { MAX_COMPARE, useCompareStore } from "@/hooks/useCompareStore";
 import { useFavoritesStore } from "@/hooks/useFavoritesStore";
 
 export function LawyerListItem({ lawyer, className }: { lawyer: Lawyer; className?: string }) {
@@ -70,7 +70,7 @@ export function LawyerListItem({ lawyer, className }: { lawyer: Lawyer; classNam
               aria-label="Compare"
               className={cn(compared && "text-brand-600")}
               onClick={() => {
-                if (!compared && isFull) { toast.error("You can compare up to 3 lawyers at a time"); return; }
+                if (!compared && isFull) { toast.error(`You can compare up to ${MAX_COMPARE} lawyers at a time`); return; }
                 toggleCompare(lawyer.id);
                 toast.success(compared ? "Removed from comparison" : "Added to comparison");
               }}

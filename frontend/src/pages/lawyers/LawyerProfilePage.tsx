@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -21,6 +21,7 @@ import { toast } from "@/components/ui/toaster";
 import { useDisclosure } from "@/hooks/useDisclosure";
 import { useFavoritesStore } from "@/hooks/useFavoritesStore";
 import { LawyerCard } from "@/components/lawyers/LawyerCard";
+import { LawyerProfileSkeleton } from "@/components/lawyers/LawyerProfileSkeleton";
 import { ReportLawyerModal } from "@/components/lawyers/ReportLawyerModal";
 import { ROUTES } from "@/constants/routes.constants";
 import { downloadTextFile, formatCurrency, formatDate } from "@/lib/utils";
@@ -32,8 +33,16 @@ export function LawyerProfilePage() {
   const report = useDisclosure();
   const { isFavorited, toggleFavorite } = useFavoritesStore();
   const [helpfulReviews, setHelpfulReviews] = useState<Set<string>>(new Set());
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => setIsLoading(false), 500);
+    return () => clearTimeout(timer);
+  }, [id]);
 
   if (!lawyer) return <Navigate to={ROUTES.notFound} replace />;
+  if (isLoading) return <LawyerProfileSkeleton />;
 
   const extras = getLawyerExtras(lawyer.id);
   const favorited = isFavorited(lawyer.id);

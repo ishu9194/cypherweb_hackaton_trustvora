@@ -28,6 +28,7 @@ export interface Lawyer {
   rating: number;
   reviewCount: number;
   consultationFee: number;
+  consultationTypes: ConsultationType[];
   responseTimeMinutes: number;
   city: string;
   state: string;

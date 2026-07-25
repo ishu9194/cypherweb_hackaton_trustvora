@@ -1,6 +1,6 @@
-import type { Lawyer, LawyerGender } from "@/types";
+import type { ConsultationType, Lawyer, LawyerGender } from "@/types";
 
-export type SortOption = "relevance" | "rating" | "experience" | "fee-low" | "fee-high" | "newest";
+export type SortOption = "relevance" | "rating" | "experience" | "fee-low" | "fee-high" | "newest" | "reviews";
 
 export interface LawyerFilterState {
   query: string;
@@ -9,6 +9,7 @@ export interface LawyerFilterState {
   state: string | null;
   court: string | null;
   languages: string[];
+  consultationTypes: ConsultationType[];
   experienceRange: [number, number];
   feeRange: [number, number];
   minRating: number;
@@ -28,6 +29,7 @@ export const DEFAULT_FILTERS: LawyerFilterState = {
   state: null,
   court: null,
   languages: [],
+  consultationTypes: [],
   experienceRange: EXPERIENCE_BOUNDS,
   feeRange: FEE_BOUNDS,
   minRating: 0,
@@ -41,12 +43,18 @@ export function filterLawyers(lawyers: Lawyer[], filters: LawyerFilterState): La
   const query = filters.query.trim().toLowerCase();
 
   const filtered = lawyers.filter((lawyer) => {
-    if (query && !lawyer.name.toLowerCase().includes(query)) return false;
+    if (query) {
+      const matchesName = lawyer.name.toLowerCase().includes(query);
+      const matchesSpecialization = lawyer.specializations.some((area) => area.toLowerCase().includes(query));
+      const matchesBio = lawyer.bio.toLowerCase().includes(query);
+      if (!matchesName && !matchesSpecialization && !matchesBio) return false;
+    }
     if (filters.practiceAreas.length && !filters.practiceAreas.some((area) => lawyer.specializations.includes(area))) return false;
     if (filters.city && lawyer.city !== filters.city) return false;
     if (filters.state && lawyer.state !== filters.state) return false;
     if (filters.court && lawyer.court !== filters.court) return false;
     if (filters.languages.length && !filters.languages.some((lang) => lawyer.languages.includes(lang))) return false;
+    if (filters.consultationTypes.length && !filters.consultationTypes.some((type) => lawyer.consultationTypes.includes(type))) return false;
     if (lawyer.experienceYears < filters.experienceRange[0] || lawyer.experienceYears > filters.experienceRange[1]) return false;
     if (lawyer.consultationFee < filters.feeRange[0] || lawyer.consultationFee > filters.feeRange[1]) return false;
     if (filters.minRating && lawyer.rating < filters.minRating) return false;
@@ -73,6 +81,9 @@ export function filterLawyers(lawyers: Lawyer[], filters: LawyerFilterState): La
     case "newest":
       sorted.sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime());
       break;
+    case "reviews":
+      sorted.sort((a, b) => b.reviewCount - a.reviewCount);
+      break;
     default:
       // relevance: verified + online + rating weighted
       sorted.sort((a, b) => {
@@ -91,6 +102,7 @@ export function countActiveFilters(filters: LawyerFilterState): number {
   if (filters.state) count += 1;
   if (filters.court) count += 1;
   if (filters.languages.length) count += filters.languages.length;
+  if (filters.consultationTypes.length) count += filters.consultationTypes.length;
   if (filters.experienceRange[0] !== EXPERIENCE_BOUNDS[0] || filters.experienceRange[1] !== EXPERIENCE_BOUNDS[1]) count += 1;
   if (filters.feeRange[0] !== FEE_BOUNDS[0] || filters.feeRange[1] !== FEE_BOUNDS[1]) count += 1;
   if (filters.minRating) count += 1;

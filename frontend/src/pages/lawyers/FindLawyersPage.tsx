@@ -1,6 +1,3 @@
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { LAWYERS } from "@/data/lawyers.data";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
@@ -10,52 +7,22 @@ import { Pagination } from "@/components/ui/pagination";
 import { FilterSidebar } from "@/components/lawyers/FilterSidebar";
 import { AdvancedFiltersDrawer } from "@/components/lawyers/AdvancedFiltersDrawer";
 import { ActiveFilterChips } from "@/components/lawyers/ActiveFilterChips";
-import { ResultsToolbar, type ViewMode } from "@/components/lawyers/ResultsToolbar";
+import { ResultsToolbar } from "@/components/lawyers/ResultsToolbar";
 import { LawyerCard } from "@/components/lawyers/LawyerCard";
 import { LawyerListItem } from "@/components/lawyers/LawyerListItem";
 import { LawyerCardSkeleton, LawyerListItemSkeleton } from "@/components/lawyers/LawyerCardSkeleton";
 import { NoResultsState } from "@/components/lawyers/NoResultsState";
 import { CompareBar } from "@/components/lawyers/CompareBar";
 import { useDisclosure } from "@/hooks/useDisclosure";
-import { DEFAULT_FILTERS, filterLawyers, countActiveFilters, type LawyerFilterState } from "@/lib/lawyerFilters";
-
-const PAGE_SIZE = 6;
+import { useLawyerFilters } from "@/hooks/useLawyerFilters";
+import { AnimatePresence, motion } from "framer-motion";
 
 export function FindLawyersPage() {
-  const [searchParams] = useSearchParams();
-  const [filters, setFilters] = useState<LawyerFilterState>(() => {
-    const area = searchParams.get("area");
-    const city = searchParams.get("city");
-    return {
-      ...DEFAULT_FILTERS,
-      practiceAreas: area ? [area] : [],
-      city: city ?? null,
-      onlineOnly: searchParams.get("availability") === "today",
-    };
-  });
-  const [view, setView] = useState<ViewMode>("grid");
-  const [page, setPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
+  const {
+    filters, updateFilter, clearAll, results, pageResults, page, setPage,
+    totalPages, isLoading, view, setView, activeFilterCount,
+  } = useLawyerFilters(LAWYERS);
   const advanced = useDisclosure();
-
-  const updateFilter = <K extends keyof LawyerFilterState>(key: K, value: LawyerFilterState[K]) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const clearAll = () => setFilters(DEFAULT_FILTERS);
-
-  const results = useMemo(() => filterLawyers(LAWYERS, filters), [filters]);
-  const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
-  const pageResults = results.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  // Simulate a network round-trip whenever filters change, to demonstrate skeleton loading.
-  useEffect(() => {
-    setIsLoading(true);
-    setPage(1);
-    const timeout = setTimeout(() => setIsLoading(false), 380);
-    return () => clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -68,6 +35,7 @@ export function FindLawyersPage() {
         </div>
         <SearchBox
           placeholder="Search by lawyer name…"
+          defaultValue={filters.query}
           onSearch={(q) => updateFilter("query", q)}
           className="sm:w-72"
         />
@@ -84,14 +52,14 @@ export function FindLawyersPage() {
             view={view}
             onViewChange={setView}
             onOpenAdvanced={advanced.open}
-            activeFilterCount={countActiveFilters(filters)}
+            activeFilterCount={activeFilterCount}
           />
 
           <ActiveFilterChips filters={filters} onChange={updateFilter} onClearAll={clearAll} />
 
           {isLoading ? (
             <div className={view === "grid" ? "grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3" : "space-y-4"}>
-              {Array.from({ length: PAGE_SIZE }).map((_, i) =>
+              {Array.from({ length: pageResults.length || 6 }).map((_, i) =>
                 view === "grid" ? <LawyerCardSkeleton key={i} /> : <LawyerListItemSkeleton key={i} />,
               )}
             </div>

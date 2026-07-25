@@ -4,9 +4,17 @@ import { Select } from "@/components/ui/select";
 import { RadioGroup } from "@/components/ui/radio";
 import { RangeSlider } from "@/components/ui/range-slider";
 import { Switch } from "@/components/ui/switch";
-import { Star } from "lucide-react";
+import { Building2, MessageSquare, Phone, Star, Video } from "lucide-react";
 import { EXPERIENCE_BOUNDS, FEE_BOUNDS, type LawyerFilterState } from "@/lib/lawyerFilters";
+import type { ConsultationType } from "@/types";
 import { formatCurrency, cn } from "@/lib/utils";
+
+const CONSULTATION_TYPE_OPTIONS: { value: ConsultationType; label: string; icon: typeof Video }[] = [
+  { value: "video", label: "Video", icon: Video },
+  { value: "voice", label: "Phone", icon: Phone },
+  { value: "chat", label: "Chat", icon: MessageSquare },
+  { value: "office", label: "In-Person", icon: Building2 },
+];
 
 interface FilterFieldsProps {
   filters: LawyerFilterState;
@@ -14,6 +22,10 @@ interface FilterFieldsProps {
 }
 
 function toggleInArray(list: string[], value: string): string[] {
+  return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
+}
+
+function toggleTyped<T>(list: T[], value: T): T[] {
   return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 }
 
@@ -83,6 +95,30 @@ export function FilterFields({ filters, onChange }: FilterFieldsProps) {
                 )}
               >
                 {lang}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        <p className="mb-3 text-sm font-semibold text-foreground">Consultation Type</p>
+        <div className="flex flex-wrap gap-2">
+          {CONSULTATION_TYPE_OPTIONS.map((option) => {
+            const active = filters.consultationTypes.includes(option.value);
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => onChange("consultationTypes", toggleTyped(filters.consultationTypes, option.value))}
+                aria-pressed={active}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                  active ? "border-brand-600 bg-brand-600 text-white" : "border-border text-muted-foreground hover:border-brand-300 hover:text-foreground",
+                )}
+              >
+                <option.icon className="h-3.5 w-3.5" />
+                {option.label}
               </button>
             );
           })}

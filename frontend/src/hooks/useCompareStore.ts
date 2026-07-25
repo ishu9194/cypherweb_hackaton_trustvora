@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "trustix_compare_lawyers";
-const MAX_COMPARE = 3;
+export const MAX_COMPARE = 4;
 const listeners = new Set<() => void>();
 
 function readInitial(): string[] {

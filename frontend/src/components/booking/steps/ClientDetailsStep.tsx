@@ -9,7 +9,10 @@ const clientDetailsSchema = z.object({
   name: z.string().min(2, "Enter your full name"),
   email: z.string().email("Enter a valid email address"),
   phone: z.string().min(10, "Enter a valid phone number").max(15),
-  notes: z.string().max(500).optional(),
+  notes: z
+    .string()
+    .min(20, "Please describe your situation in at least 20 characters")
+    .max(500, "Keep your case overview under 500 characters"),
 });
 
 export type ClientDetailsValues = z.infer<typeof clientDetailsSchema>;
@@ -50,7 +53,14 @@ export const ClientDetailsStep = forwardRef<ClientDetailsStepHandle, ClientDetai
           <Input label="Phone number" placeholder="98765 43210" error={errors.phone?.message} {...register("phone")} />
         </div>
         <Input label="Email address" type="email" placeholder="you@email.com" error={errors.email?.message} {...register("email")} />
-        <Textarea label="Notes for the lawyer (optional)" placeholder="Briefly describe your situation…" rows={4} error={errors.notes?.message} {...register("notes")} />
+        <Textarea
+          label="Case overview"
+          placeholder="Briefly describe your situation… (minimum 20 characters)"
+          rows={4}
+          hint="This helps the lawyer prepare before your consultation."
+          error={errors.notes?.message}
+          {...register("notes")}
+        />
       </form>
     </div>
   );
