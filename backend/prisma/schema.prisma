@@ -155,3 +155,19 @@ model Appointment {
   @@index([clientId])
   @@index([lawyerId])
 }
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  senderName     String?
+  receiverId     String?
+  text           String
+  attachment     String?
+  read           Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@index([conversationId])
+  @@index([senderId])
+}
+

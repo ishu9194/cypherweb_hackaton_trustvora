@@ -11,6 +11,8 @@ import { reviewsRoutes } from "./routes/reviews.routes.js";
 import { adminRoutes } from "./routes/admin.routes.js";
 import { dashboardRoutes } from "./routes/dashboard.routes.js";
 import { contentRoutes } from "./routes/content.routes.js";
+import { setupSocketIO } from "./socket.js";
+
 
 dotenv.config();
 
@@ -65,7 +67,11 @@ fastify.get("/health", async () => {
   return { status: "ok", service: "Trustix API", timestamp: new Date() };
 });
 
+// Setup Socket.io Real-Time Messaging Server
+setupSocketIO(fastify);
+
 const start = async () => {
+
   try {
     const port = Number(process.env.PORT) || 3000;
     await fastify.listen({ port, host: "0.0.0.0" });

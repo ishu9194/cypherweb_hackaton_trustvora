@@ -13,6 +13,7 @@ import { ROUTES } from "@/constants/routes.constants";
 import { formatTime, cn } from "@/lib/utils";
 import { dashboardService } from "@/services/api/dashboard.service";
 import { useAsync } from "@/hooks/useAsync";
+import { emitTyping, getSocket, joinConversation, sendSocketMessage } from "@/services/socket.service";
 
 const EMOJIS = ["👍", "❤️", "😂", "🙏", "🎉", "👏", "😊", "🔥"];
 
@@ -36,27 +37,104 @@ export function MessagesPage() {
   const active = conversations.find((c) => c.id === activeId) ?? conversations[0];
   const filtered = conversations.filter((c) => (c.lawyerName ?? "").toLowerCase().includes(query.toLowerCase()));
 
+  // Socket.io Real-Time Event Handlers
+  useEffect(() => {
+    if (!active?.id) return;
+
+    joinConversation(active.id);
+    const socket = getSocket();
+
+    const handleReceiveMessage = (incoming: any) => {
+      if (incoming.conversationId === active.id) {
+        const newMsg: ChatMessage = {
+          id: incoming.id || `m-${Date.now()}`,
+          senderId: incoming.senderId,
+          text: incoming.text || incoming.content || "",
+          attachment: incoming.attachment,
+          timestamp: incoming.timestamp || incoming.createdAt || new Date().toISOString(),
+          read: incoming.read ?? false,
+        };
+
+        setConversations((prev) =>
+          prev.map((c) => {
+            if (c.id === active.id) {
+              if (c.messages.some((m) => m.id === newMsg.id)) return c;
+              return {
+                ...c,
+                messages: [...c.messages, newMsg],
+                lastMessage: newMsg.text || "",
+                lastMessageAt: newMsg.timestamp,
+              };
+            }
+            return c;
+          }),
+        );
+      }
+    };
+
+    const handleUserTyping = (data: { conversationId: string; userId: string; isTyping: boolean }) => {
+      if (data.conversationId === active.id) {
+        setIsTyping(data.isTyping);
+      }
+    };
+
+    socket.on("receive_message", handleReceiveMessage);
+    socket.on("user_typing", handleUserTyping);
+
+    return () => {
+      socket.off("receive_message", handleReceiveMessage);
+      socket.off("user_typing", handleUserTyping);
+    };
+  }, [active?.id]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [active?.messages.length, isTyping]);
 
+  const handleDraftChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setDraft(val);
+    if (active?.id) {
+      emitTyping(active.id, val.length > 0);
+    }
+  };
+
   const sendMessage = () => {
     if (!draft.trim() || !active) return;
-    const message: ChatMessage = { id: `m-${Date.now()}`, senderId: "me", text: draft, timestamp: new Date().toISOString(), read: false };
-    setConversations((prev) => prev.map((c) => (c.id === active.id ? { ...c, messages: [...c.messages, message], lastMessage: draft, lastMessageAt: message.timestamp } : c)));
     const sentText = draft;
     setDraft("");
     setShowEmoji(false);
 
-    dashboardService.sendMessage(active.id, sentText).catch(() => {});
+    if (active.id) {
+      emitTyping(active.id, false);
+    }
 
-    // Simulate lawyer typing response
-    setIsTyping(true);
-    setTimeout(() => {
-      setIsTyping(false);
-      const reply: ChatMessage = { id: `m-${Date.now() + 1}`, senderId: active.lawyerId ?? active.id ?? "", text: "Thanks for the update — I'll take a look shortly.", timestamp: new Date().toISOString(), read: true };
-      setConversations((prev) => prev.map((c) => (c.id === active.id ? { ...c, messages: [...c.messages, reply], lastMessage: reply.text!, lastMessageAt: reply.timestamp } : c)));
-    }, 1800);
+    const message: ChatMessage = {
+      id: `m-${Date.now()}`,
+      senderId: "me",
+      text: sentText,
+      timestamp: new Date().toISOString(),
+      read: false,
+    };
+
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === active.id
+          ? { ...c, messages: [...c.messages, message], lastMessage: sentText, lastMessageAt: message.timestamp }
+          : c,
+      ),
+    );
+
+    // Real-Time Socket dispatch & database persistence
+    sendSocketMessage({
+      conversationId: active.id,
+      text: sentText,
+      content: sentText,
+      receiverId: active.lawyerId || active.id,
+      senderName: "Client",
+    });
+
+    dashboardService.sendMessage(active.id, sentText).catch(() => {});
   };
 
   const addReaction = (messageId: string, emoji: string) => {
@@ -73,8 +151,27 @@ export function MessagesPage() {
   const attach = (type: "image" | "document" | "voice") => {
     if (!active) return;
     const names = { image: "Photo.jpg", document: "Document.pdf", voice: "Voice note" };
-    const message: ChatMessage = { id: `m-${Date.now()}`, senderId: "me", text: names[type], attachment: { type, name: names[type], url: "#", duration: type === "voice" ? "0:12" : undefined }, timestamp: new Date().toISOString(), read: false };
+    const attachmentObj = { type, name: names[type], url: "#", duration: type === "voice" ? "0:12" : undefined };
+    const message: ChatMessage = {
+      id: `m-${Date.now()}`,
+      senderId: "me",
+      text: names[type],
+      attachment: attachmentObj,
+      timestamp: new Date().toISOString(),
+      read: false,
+    };
+
     setConversations((prev) => prev.map((c) => (c.id === active.id ? { ...c, messages: [...c.messages, message] } : c)));
+
+    sendSocketMessage({
+      conversationId: active.id,
+      text: names[type],
+      content: names[type],
+      receiverId: active.lawyerId || active.id,
+      senderName: "Client",
+      attachment: attachmentObj,
+    });
+
     toast.success(`${type === "voice" ? "Voice message" : "File"} sent`);
   };
 
@@ -214,7 +311,7 @@ export function MessagesPage() {
             <Button size="icon" variant="ghost" aria-label="Emoji" onClick={() => setShowEmoji((s) => !s)}><Smile className="h-4 w-4" /></Button>
             <input
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={handleDraftChange}
               onKeyDown={(e) => e.key === "Enter" && sendMessage()}
               placeholder="Type a message…"
               className="h-10 flex-1 rounded-lg border border-border bg-surface px-3.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-brand-500/20"
