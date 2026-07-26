@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Heart, LayoutGrid, List } from "lucide-react";
-import { LAWYERS } from "@/data/lawyers.data";
+import type { Lawyer } from "@/types";
+import { lawyersService } from "@/services/api/lawyers.service";
 import { useFavoritesStore } from "@/hooks/useFavoritesStore";
 import { LawyerCard } from "@/components/lawyers/LawyerCard";
 import { LawyerListItem } from "@/components/lawyers/LawyerListItem";
@@ -13,7 +14,33 @@ import { ROUTES } from "@/constants/routes.constants";
 export function SavedLawyersPage() {
   const { favorites } = useFavoritesStore();
   const [view, setView] = useState<"grid" | "list">("grid");
-  const saved = LAWYERS.filter((l) => favorites.has(l.id));
+  const [saved, setSaved] = useState<Lawyer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const ids = Array.from(favorites);
+    if (ids.length === 0) {
+      setSaved([]);
+      setIsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setIsLoading(true);
+    Promise.all(ids.map((id) => lawyersService.getById(id))).then((results) => {
+      if (!cancelled) {
+        setSaved(results.filter((l): l is Lawyer => l !== null));
+        setIsLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setSaved([]);
+        setIsLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [favorites]);
 
   return (
     <div className="space-y-6">
@@ -32,7 +59,9 @@ export function SavedLawyersPage() {
         </div>
       </div>
 
-      {saved.length === 0 ? (
+      {isLoading ? (
+        <div className="py-12 text-center text-sm text-muted-foreground">Loading saved lawyers…</div>
+      ) : saved.length === 0 ? (
         <EmptyState
           icon={<Heart className="h-5 w-5" />}
           title="No saved lawyers yet"

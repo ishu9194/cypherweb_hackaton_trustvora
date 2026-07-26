@@ -156,3 +156,6 @@ export function BookingSuccessPage() {
     </div>
   );
 }
+
+export default BookingSuccessPage;
+

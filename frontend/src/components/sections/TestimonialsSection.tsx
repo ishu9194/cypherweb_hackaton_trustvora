@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Quote, Star } from "lucide-react";
-import { TESTIMONIALS } from "@/data/testimonials.data";
+import { contentService, type TestimonialItem } from "@/services/api/content.service";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -9,14 +9,29 @@ import { cn } from "@/lib/utils";
 export function TestimonialsSection() {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [testimonials, setTestimonials] = useState<TestimonialItem[]>([]);
 
   useEffect(() => {
-    if (paused) return;
-    const interval = setInterval(() => setIndex((prev) => (prev + 1) % TESTIMONIALS.length), 5000);
-    return () => clearInterval(interval);
-  }, [paused]);
+    let cancelled = false;
+    contentService.getTestimonials().then((res) => {
+      if (!cancelled) setTestimonials(res || []);
+    }).catch(() => {
+      if (!cancelled) setTestimonials([]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const testimonial = TESTIMONIALS[index];
+  useEffect(() => {
+    if (paused || testimonials.length === 0) return;
+    const interval = setInterval(() => setIndex((prev) => (prev + 1) % testimonials.length), 5000);
+    return () => clearInterval(interval);
+  }, [paused, testimonials.length]);
+
+  if (testimonials.length === 0) return null;
+
+  const testimonial = testimonials[index % testimonials.length];
 
   return (
     <section className="bg-surface-sunken py-24">
@@ -46,15 +61,14 @@ export function TestimonialsSection() {
                     <Star key={i} className="h-4 w-4 fill-current" />
                   ))}
                 </div>
-                <p className="mt-4 text-lg leading-relaxed text-foreground sm:text-xl">"{testimonial.quote}"</p>
+                <p className="mt-4 text-lg leading-relaxed text-foreground sm:text-xl">"{testimonial.comment}"</p>
                 <div className="mt-6 flex items-center gap-3">
-                  <Avatar src={testimonial.avatarUrl} name={testimonial.name} />
+                  <Avatar src={testimonial.authorAvatarUrl} name={testimonial.authorName} />
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-foreground">{testimonial.name}</p>
+                      <p className="text-sm font-semibold text-foreground">{testimonial.authorName}</p>
                       {testimonial.verifiedClient && <Badge variant="success">Verified Client</Badge>}
                     </div>
-                    <p className="text-xs text-muted-foreground">{testimonial.role}</p>
                   </div>
                 </div>
               </motion.div>
@@ -65,13 +79,13 @@ export function TestimonialsSection() {
             <button
               type="button"
               aria-label="Previous testimonial"
-              onClick={() => setIndex((prev) => (prev - 1 + TESTIMONIALS.length) % TESTIMONIALS.length)}
+              onClick={() => setIndex((prev) => (prev - 1 + testimonials.length) % testimonials.length)}
               className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-surface"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <div className="flex gap-1.5">
-              {TESTIMONIALS.map((t, i) => (
+              {testimonials.map((t, i) => (
                 <button
                   key={t.id}
                   type="button"
@@ -84,7 +98,7 @@ export function TestimonialsSection() {
             <button
               type="button"
               aria-label="Next testimonial"
-              onClick={() => setIndex((prev) => (prev + 1) % TESTIMONIALS.length)}
+              onClick={() => setIndex((prev) => (prev + 1) % testimonials.length)}
               className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-surface"
             >
               <ChevronRight className="h-4 w-4" />

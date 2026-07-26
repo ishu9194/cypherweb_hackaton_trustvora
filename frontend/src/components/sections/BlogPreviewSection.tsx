@@ -1,7 +1,8 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Clock } from "lucide-react";
-import { BLOG_POSTS } from "@/data/blog.data";
+import { contentService, type BlogPost } from "@/services/api/content.service";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,22 @@ import { formatDate, cn } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes.constants";
 
 export function BlogPreviewSection() {
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    contentService.getBlogPosts().then((res) => {
+      if (!cancelled) setPosts(res || []);
+    }).catch(() => {
+      if (!cancelled) setPosts([]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (posts.length === 0) return null;
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
@@ -25,7 +42,7 @@ export function BlogPreviewSection() {
       </div>
 
       <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {BLOG_POSTS.map((post, index) => (
+        {posts.map((post, index) => (
           <motion.article
             key={post.id}
             initial={{ opacity: 0, y: 16 }}
@@ -35,7 +52,7 @@ export function BlogPreviewSection() {
             className="card-lift group overflow-hidden rounded-2xl border border-border bg-surface"
           >
             <Link to={ROUTES.blog} className="block">
-              <div className={cn("flex h-36 items-end bg-gradient-to-br p-5", post.coverGradient)}>
+              <div className={cn("flex h-36 items-end bg-gradient-to-br p-5", post.coverGradient || "from-brand-600 to-brand-800")}>
                 <Badge variant="outline" className="border-white/30 text-white">{post.category}</Badge>
               </div>
               <div className="p-6">

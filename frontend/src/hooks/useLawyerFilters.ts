@@ -6,10 +6,10 @@ import {
   EXPERIENCE_BOUNDS,
   FEE_BOUNDS,
   countActiveFilters,
-  filterLawyers,
   type LawyerFilterState,
   type SortOption,
 } from "@/lib/lawyerFilters";
+import { lawyersService } from "@/services/api/lawyers.service";
 
 export type LawyerViewMode = "grid" | "list";
 
@@ -86,20 +86,50 @@ function filtersToSearchParams(filters: LawyerFilterState): URLSearchParams {
   return params;
 }
 
-interface UseLawyerFiltersOptions {
-  pageSize?: number;
-  /** Fake network latency (ms) to simulate for skeleton loading states. Set to 0 to disable. */
-  simulatedLatencyMs?: number;
+/**
+ * The live backend (GET /api/v1/lawyers) only understands a subset of the
+ * filters this UI exposes: search, practiceArea, minRating, maxPrice,
+ * consultationType, sort, and page. Everything else (city, state, court,
+ * languages, experience range, gender, verifiedOnly, onlineOnly, and
+ * multi-select practice areas/consultation types beyond the first) is
+ * applied client-side as a refinement on top of the fetched page. That
+ * means the "results found" count and pagination reflect the *server-side*
+ * filters only — the extra client-side filters narrow what's displayed
+ * without a matching round-trip to adjust total/pageCount. Once the API
+ * supports these fields natively, this refinement step can be deleted.
+ */
+function refineClientSide(lawyers: Lawyer[], filters: LawyerFilterState): Lawyer[] {
+  return lawyers.filter((lawyer) => {
+    if (filters.practiceAreas.length > 1 && !filters.practiceAreas.some((area) => lawyer.specializations.includes(area))) return false;
+    if (filters.city && lawyer.city !== filters.city) return false;
+    if (filters.state && lawyer.state !== filters.state) return false;
+    if (filters.court && lawyer.court !== filters.court) return false;
+    if (filters.languages.length && !filters.languages.some((lang) => lawyer.languages.includes(lang))) return false;
+    if (filters.consultationTypes.length > 1 && !filters.consultationTypes.some((type) => lawyer.consultationTypes.includes(type))) return false;
+    if (lawyer.experienceYears < filters.experienceRange[0] || lawyer.experienceYears > filters.experienceRange[1]) return false;
+    if (lawyer.consultationFee < filters.feeRange[0]) return false;
+    if (filters.gender && lawyer.gender !== filters.gender) return false;
+    if (filters.verifiedOnly && !lawyer.verified) return false;
+    if (filters.onlineOnly && !lawyer.online) return false;
+    return true;
+  });
 }
 
-export function useLawyerFilters(lawyers: Lawyer[], options: UseLawyerFiltersOptions = {}) {
-  const { pageSize = 6, simulatedLatencyMs = 380 } = options;
+interface UseLawyerFiltersOptions {
+  pageSize?: number;
+}
+
+export function useLawyerFilters(options: UseLawyerFiltersOptions = {}) {
+  const { pageSize = 6 } = options;
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [filters, setFilters] = useState<LawyerFilterState>(() => readFiltersFromSearchParams(searchParams));
   const [view, setView] = useState<LawyerViewMode>("grid");
   const [page, setPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [rawResults, setRawResults] = useState<Lawyer[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const isFirstRun = useRef(true);
 
   const updateFilter = useCallback(
@@ -123,30 +153,75 @@ export function useLawyerFilters(lawyers: Lawyer[], options: UseLawyerFiltersOpt
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
-  // Simulate a network round-trip whenever filters change, so the UI can
-  // show skeleton loading states the way a real paginated API would.
+  // Reset to page 1 whenever the filters change.
   useEffect(() => {
     setPage(1);
-    if (simulatedLatencyMs <= 0) return;
-    setIsLoading(true);
-    const timeout = setTimeout(() => setIsLoading(false), simulatedLatencyMs);
-    return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
-  const results = useMemo(() => filterLawyers(lawyers, filters), [lawyers, filters]);
-  const totalPages = Math.max(1, Math.ceil(results.length / pageSize));
-  const pageResults = useMemo(
-    () => results.slice((page - 1) * pageSize, page * pageSize),
-    [results, page, pageSize],
-  );
+  // Fetch from the live backend whenever the server-supported filters or page change.
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+
+    lawyersService
+      .list({
+        search: filters.query || undefined,
+        practiceArea: filters.practiceAreas[0],
+        minRating: filters.minRating || undefined,
+        maxPrice: filters.feeRange[1] !== FEE_BOUNDS[1] ? filters.feeRange[1] : undefined,
+        consultationType: filters.consultationTypes[0],
+        sort: filters.sort,
+        page,
+        pageSize,
+      })
+      .then(({ lawyers, meta }) => {
+        if (cancelled) return;
+        setRawResults(lawyers);
+        setTotal(meta.total);
+        setTotalPages(meta.totalPages);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setRawResults([]);
+        setTotal(0);
+        setTotalPages(1);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    filters.query,
+    filters.practiceAreas,
+    filters.minRating,
+    filters.feeRange,
+    filters.consultationTypes,
+    filters.sort,
+    filters.city,
+    filters.state,
+    filters.court,
+    filters.languages,
+    filters.experienceRange,
+    filters.gender,
+    filters.verifiedOnly,
+    filters.onlineOnly,
+    page,
+    pageSize,
+  ]);
+
+  const pageResults = useMemo(() => refineClientSide(rawResults, filters), [rawResults, filters]);
   const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
 
   return {
     filters,
     updateFilter,
     clearAll,
-    results,
+    results: pageResults,
+    resultCount: total,
     pageResults,
     page,
     setPage,

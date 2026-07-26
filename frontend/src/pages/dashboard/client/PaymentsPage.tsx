@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts";
 import { Download, Receipt as ReceiptIcon } from "lucide-react";
-import { PAYMENTS } from "@/data/testimonials.data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Timeline } from "@/components/ui/timeline";
+import { ErrorState } from "@/components/states/ErrorState";
 import { toast } from "@/components/ui/toaster";
 import { useDisclosure } from "@/hooks/useDisclosure";
 import { downloadTextFile, formatCurrency, formatDate } from "@/lib/utils";
+import { dashboardService } from "@/services/api/dashboard.service";
+import { useAsync } from "@/hooks/useAsync";
 import type { Payment } from "@/types";
 
 const MONTHLY_SPEND = [
@@ -29,13 +31,18 @@ const STATUS_VARIANT: Record<Payment["status"], "success" | "warning" | "neutral
 };
 
 export function PaymentsPage() {
+  const { data: payments, isLoading, error, refetch } = useAsync(() => dashboardService.getPayments(), []);
   const timelineModal = useDisclosure();
   const [selected, setSelected] = useState<Payment | null>(null);
-  const totalSpent = PAYMENTS.filter((p) => p.status === "paid").reduce((sum, p) => sum + p.amount, 0);
-  const pending = PAYMENTS.filter((p) => p.status === "pending").reduce((sum, p) => sum + p.amount, 0);
-  const refunded = PAYMENTS.filter((p) => p.status === "refunded").reduce((sum, p) => sum + p.amount, 0);
+
+  const paymentsList = payments ?? [];
+  const totalSpent = paymentsList.filter((p) => p.status === "paid").reduce((sum, p) => sum + p.amount, 0);
+  const pending = paymentsList.filter((p) => p.status === "pending").reduce((sum, p) => sum + p.amount, 0);
+  const refunded = paymentsList.filter((p) => p.status === "refunded").reduce((sum, p) => sum + p.amount, 0);
 
   const openTimeline = (payment: Payment) => { setSelected(payment); timelineModal.open(); };
+
+  if (error) return <ErrorState description={error} onRetry={refetch} />;
 
   return (
     <div className="space-y-6">
@@ -45,9 +52,9 @@ export function PaymentsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card><CardContent><p className="text-xs text-muted-foreground">Total spent</p><p className="mt-1 font-display text-xl font-bold text-foreground">{formatCurrency(totalSpent)}</p></CardContent></Card>
-        <Card><CardContent><p className="text-xs text-muted-foreground">Pending</p><p className="mt-1 font-display text-xl font-bold text-warning">{formatCurrency(pending)}</p></CardContent></Card>
-        <Card><CardContent><p className="text-xs text-muted-foreground">Refunded</p><p className="mt-1 font-display text-xl font-bold text-muted-foreground">{formatCurrency(refunded)}</p></CardContent></Card>
+        <Card><CardContent><p className="text-xs text-muted-foreground">Total spent</p><p className="mt-1 font-display text-xl font-bold text-foreground">{isLoading ? "…" : formatCurrency(totalSpent)}</p></CardContent></Card>
+        <Card><CardContent><p className="text-xs text-muted-foreground">Pending</p><p className="mt-1 font-display text-xl font-bold text-warning">{isLoading ? "…" : formatCurrency(pending)}</p></CardContent></Card>
+        <Card><CardContent><p className="text-xs text-muted-foreground">Refunded</p><p className="mt-1 font-display text-xl font-bold text-muted-foreground">{isLoading ? "…" : formatCurrency(refunded)}</p></CardContent></Card>
       </div>
 
       <Card>
@@ -68,27 +75,33 @@ export function PaymentsPage() {
       <Card>
         <CardHeader><CardTitle>Transaction History</CardTitle></CardHeader>
         <CardContent className="space-y-2">
-          {PAYMENTS.map((payment) => (
-            <div key={payment.id} className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-medium text-foreground">{payment.description}</p>
-                <p className="text-xs text-muted-foreground">{formatDate(payment.date)}</p>
+          {isLoading ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">Loading payments…</p>
+          ) : paymentsList.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">No payments found.</p>
+          ) : (
+            paymentsList.map((payment) => (
+              <div key={payment.id} className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{payment.description}</p>
+                  <p className="text-xs text-muted-foreground">{formatDate(payment.date)}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={STATUS_VARIANT[payment.status]} className="capitalize">{payment.status}</Badge>
+                  <span className="text-sm font-semibold text-foreground">{formatCurrency(payment.amount)}</span>
+                  <Button size="sm" variant="ghost" onClick={() => openTimeline(payment)}><ReceiptIcon className="h-3.5 w-3.5" /> Timeline</Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label="Download receipt"
+                    onClick={() => { downloadTextFile(`receipt-${payment.id}.txt`, `Trustix Receipt\n${payment.description}\n${formatDate(payment.date)}\nAmount: ${formatCurrency(payment.amount)}\nStatus: ${payment.status}`); toast.success("Receipt downloaded"); }}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={STATUS_VARIANT[payment.status]} className="capitalize">{payment.status}</Badge>
-                <span className="text-sm font-semibold text-foreground">{formatCurrency(payment.amount)}</span>
-                <Button size="sm" variant="ghost" onClick={() => openTimeline(payment)}><ReceiptIcon className="h-3.5 w-3.5" /> Timeline</Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label="Download receipt"
-                  onClick={() => { downloadTextFile(`receipt-${payment.id}.txt`, `Trustix Receipt\n${payment.description}\n${formatDate(payment.date)}\nAmount: ${formatCurrency(payment.amount)}\nStatus: ${payment.status}`); toast.success("Receipt downloaded"); }}
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
 
@@ -106,3 +119,5 @@ export function PaymentsPage() {
     </div>
   );
 }
+
+export default PaymentsPage;

@@ -1,7 +1,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
-import { LoginSchema, RegisterSchema } from "../schemas/auth.schema.js";
+import { GoogleAuthSchema, LoginSchema, RegisterSchema } from "../schemas/auth.schema.js";
 import { asyncHandler, HttpError } from "../utils/asyncHandler.js";
 
 /** Fields safe to return to the client — never leak passwordHash. */
@@ -19,7 +19,7 @@ export const register = asyncHandler(async (request: FastifyRequest, reply: Fast
 
   const passwordHash = await bcrypt.hash(body.password, 10);
   const user = await prisma.user.create({
-    data: { name: body.name, email: body.email, passwordHash, role: body.role },
+    data: { name: body.name, email: body.email, passwordHash, role: body.role as any },
   });
 
   const token = await reply.jwtSign({ sub: user.id, role: user.role }, { expiresIn: "7d" });
@@ -45,9 +45,25 @@ export const login = asyncHandler(async (request: FastifyRequest, reply: Fastify
   return reply.status(200).send({ success: true, data: { user: toPublicUser(user), token } });
 });
 
+export const googleAuth = asyncHandler(async (request: FastifyRequest, reply: FastifyReply) => {
+  const body = GoogleAuthSchema.parse(request.body);
+  const email = body.email || "google_user@example.com";
+  const name = body.name || "Google User";
+
+  let user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    user = await prisma.user.create({
+      data: { name, email, role: "CLIENT" },
+    });
+  }
+
+  const token = await reply.jwtSign({ sub: user.id, role: user.role }, { expiresIn: "7d" });
+
+  return reply.status(200).send({ success: true, data: { user: toPublicUser(user), token } });
+});
+
 export const me = asyncHandler(async (request: FastifyRequest, reply: FastifyReply) => {
-  // request.user is populated by the `fastify.authenticate` preHandler (jwtVerify)
-  const { sub } = request.user;
+  const { sub } = request.user as { sub: string };
 
   const user = await prisma.user.findUnique({
     where: { id: sub },

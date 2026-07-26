@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Heart, Mail, Search as SearchIcon, Settings, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,8 @@ import { Skeleton, SkeletonCard, SkeletonText } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/states/EmptyState";
 import { ErrorState } from "@/components/states/ErrorState";
 import { SuccessState } from "@/components/states/SuccessState";
-import { LAWYERS } from "@/data/lawyers.data";
+import type { Lawyer } from "@/types";
+import { lawyersService } from "@/services/api/lawyers.service";
 import { useDisclosure } from "@/hooks/useDisclosure";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -42,7 +43,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-const gridColumns: DataGridColumn<(typeof LAWYERS)[number]>[] = [
+const gridColumns: DataGridColumn<Lawyer>[] = [
   { key: "name", header: "Name", render: (row) => row.name, sortValue: (row) => row.name },
   { key: "city", header: "City", render: (row) => row.city, sortValue: (row) => row.city },
   { key: "rating", header: "Rating", render: (row) => row.rating.toFixed(1), sortValue: (row) => row.rating, align: "right" },
@@ -54,6 +55,19 @@ export function StyleGuidePage() {
   const drawer = useDisclosure();
   const [page, setPage] = useState(3);
   const [date, setDate] = useState<Date>();
+  const [lawyers, setLawyers] = useState<Lawyer[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    lawyersService.list({ pageSize: 5 }).then((res) => {
+      if (!cancelled) setLawyers(res.lawyers || []);
+    }).catch(() => {
+      if (!cancelled) setLawyers([]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
@@ -178,7 +192,7 @@ export function StyleGuidePage() {
       </Section>
 
       <Section title="Data Display">
-        <DataGrid columns={gridColumns} rows={LAWYERS} getRowId={(row) => row.id} />
+        <DataGrid columns={gridColumns} rows={lawyers} getRowId={(row) => row.id} />
         <Accordion
           items={[
             { value: "a1", question: "What is Trustix?", answer: "A platform connecting clients with verified lawyers." },
@@ -201,9 +215,9 @@ export function StyleGuidePage() {
       <Section title="Avatars">
         <div className="flex flex-wrap items-center gap-3">
           <Avatar name="Meet Agrawal" size="sm" />
-          <Avatar name="Priya Sharma" src={LAWYERS[0].avatarUrl} size="md" online />
-          <Avatar name="Rohan Mehta" src={LAWYERS[1].avatarUrl} size="lg" verified />
-          <Avatar name="Ananya Iyer" src={LAWYERS[2].avatarUrl} size="xl" online />
+          <Avatar name="Priya Sharma" size="md" online />
+          <Avatar name="Rohan Mehta" size="lg" verified />
+          <Avatar name="Ananya Iyer" size="xl" online />
         </div>
       </Section>
 

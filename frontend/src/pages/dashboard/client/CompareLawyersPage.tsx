@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { GitCompareArrows } from "lucide-react";
-import { LAWYERS } from "@/data/lawyers.data";
+import type { Lawyer } from "@/types";
+import { lawyersService } from "@/services/api/lawyers.service";
 import { MAX_COMPARE, useCompareStore } from "@/hooks/useCompareStore";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -11,7 +13,32 @@ import { ROUTES } from "@/constants/routes.constants";
 
 export function CompareLawyersPage() {
   const { compareList, toggleCompare, clearCompare } = useCompareStore();
-  const lawyers = LAWYERS.filter((l) => compareList.includes(l.id));
+  const [lawyers, setLawyers] = useState<Lawyer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (compareList.length === 0) {
+      setLawyers([]);
+      setIsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setIsLoading(true);
+    Promise.all(compareList.map((id) => lawyersService.getById(id))).then((results) => {
+      if (!cancelled) {
+        setLawyers(results.filter((l): l is Lawyer => l !== null));
+        setIsLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setLawyers([]);
+        setIsLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [compareList]);
 
   return (
     <div className="space-y-6">
@@ -23,7 +50,9 @@ export function CompareLawyersPage() {
         {lawyers.length > 0 && <Button variant="outline" size="sm" onClick={clearCompare}>Clear all</Button>}
       </div>
 
-      {lawyers.length === 0 ? (
+      {isLoading ? (
+        <div className="py-12 text-center text-sm text-muted-foreground">Loading lawyers to compare…</div>
+      ) : lawyers.length === 0 ? (
         <EmptyState
           icon={<GitCompareArrows className="h-5 w-5" />}
           title="No lawyers to compare"
@@ -47,14 +76,14 @@ export function CompareLawyersPage() {
           </TableHeader>
           <TableBody>
             {[
-              { label: "Rating", render: (l: typeof lawyers[number]) => `${l.rating} (${l.reviewCount})` },
-              { label: "Experience", render: (l: typeof lawyers[number]) => `${l.experienceYears} yrs` },
-              { label: "Consultation Fee", render: (l: typeof lawyers[number]) => formatCurrency(l.consultationFee) },
-              { label: "Response Time", render: (l: typeof lawyers[number]) => `~${l.responseTimeMinutes} min` },
-              { label: "Success Rate", render: (l: typeof lawyers[number]) => `${l.successRate}%` },
-              { label: "Cases Handled", render: (l: typeof lawyers[number]) => l.casesWon },
-              { label: "Languages", render: (l: typeof lawyers[number]) => l.languages.join(", ") },
-              { label: "City", render: (l: typeof lawyers[number]) => l.city },
+              { label: "Rating", render: (l: Lawyer) => `${l.rating} (${l.reviewCount})` },
+              { label: "Experience", render: (l: Lawyer) => `${l.experienceYears} yrs` },
+              { label: "Consultation Fee", render: (l: Lawyer) => formatCurrency(l.consultationFee) },
+              { label: "Response Time", render: (l: Lawyer) => `~${l.responseTimeMinutes} min` },
+              { label: "Success Rate", render: (l: Lawyer) => `${l.successRate}%` },
+              { label: "Cases Handled", render: (l: Lawyer) => l.casesWon },
+              { label: "Languages", render: (l: Lawyer) => l.languages.join(", ") },
+              { label: "City", render: (l: Lawyer) => l.city },
             ].map((row) => (
               <TableRow key={row.label}>
                 <TableCell className="font-medium">{row.label}</TableCell>

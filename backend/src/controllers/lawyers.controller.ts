@@ -62,7 +62,7 @@ export const getLawyerById = asyncHandler(async (request: FastifyRequest, reply:
   });
 
   if (!lawyer) {
-    throw new HttpError(404, "Lawyer not found");
+    throw new HttpError(404, "Resource not found");
   }
 
   return reply.status(200).send({ success: true, data: lawyer });

@@ -49,7 +49,9 @@ export function RegisterPage() {
     setIsSubmitting(true);
     await new Promise((resolve) => setTimeout(resolve, 500));
     setIsSubmitting(false);
-    navigate(ROUTES.verifyOtp, { state: { email: values.email, name: values.name, role, purpose: "register" } });
+    navigate(ROUTES.verifyOtp, {
+      state: { email: values.email, name: values.name, password: values.password, role, purpose: "register" },
+    });
   };
 
   return (

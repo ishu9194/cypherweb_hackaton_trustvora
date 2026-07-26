@@ -1,7 +1,5 @@
-import { APPOINTMENTS } from "@/data/testimonials.data";
-import type { Appointment, ConsultationType } from "@/types";
-import { sleep } from "@/lib/utils";
-import { apiClient, USE_MOCK_DATA } from "./client";
+import type { Appointment, AppointmentStatus, ConsultationType } from "@/types";
+import { apiClient } from "./client";
 import { ENDPOINTS } from "./endpoints";
 
 export interface CreateAppointmentInput {
@@ -13,40 +11,24 @@ export interface CreateAppointmentInput {
   fee: number;
 }
 
-let mockAppointments = [...APPOINTMENTS];
-
 export const appointmentsService = {
+  /** Calls GET /api/v1/appointments — scoped server-side to the authenticated client or lawyer. */
   async list(): Promise<Appointment[]> {
-    if (USE_MOCK_DATA) {
-      await sleep(350);
-      return mockAppointments;
-    }
     return apiClient.get<Appointment[]>(ENDPOINTS.appointments.list);
   },
 
+  /** Calls POST /api/v1/appointments */
   async create(input: CreateAppointmentInput): Promise<Appointment> {
-    if (USE_MOCK_DATA) {
-      await sleep(500);
-      const appointment: Appointment = {
-        id: `ap-${Date.now()}`,
-        clientName: "Meet Agrawal",
-        status: "upcoming",
-        ...input,
-      };
-      mockAppointments = [appointment, ...mockAppointments];
-      return appointment;
-    }
     return apiClient.post<Appointment>(ENDPOINTS.appointments.create, input);
   },
 
-  async cancel(id: string): Promise<void> {
-    if (USE_MOCK_DATA) {
-      await sleep(300);
-      mockAppointments = mockAppointments.map((appointment) =>
-        appointment.id === id ? { ...appointment, status: "cancelled" } : appointment,
-      );
-      return;
-    }
-    await apiClient.patch(ENDPOINTS.appointments.cancel(id));
+  /** Calls PATCH /api/v1/appointments/:id/status */
+  async updateStatus(id: string, status: AppointmentStatus): Promise<Appointment> {
+    return apiClient.patch<Appointment>(ENDPOINTS.appointments.updateStatus(id), { status });
+  },
+
+  /** Convenience wrapper around updateStatus for the common cancel action. */
+  async cancel(id: string): Promise<Appointment> {
+    return this.updateStatus(id, "cancelled");
   },
 };

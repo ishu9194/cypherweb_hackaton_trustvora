@@ -1,9 +1,10 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   MessagesSquare, FileEdit, FileWarning, SearchCheck, Building2, BadgeCheck,
-  Receipt, Landmark, Check, ArrowRight, type LucideIcon,
+  Receipt, Landmark, ArrowRight, type LucideIcon,
 } from "lucide-react";
-import { SERVICES } from "@/data/services.data";
+import { contentService, type ServiceItem } from "@/services/api/content.service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/toaster";
@@ -14,6 +15,22 @@ const ICONS: Record<string, LucideIcon> = {
 };
 
 export function ServicesSection() {
+  const [services, setServices] = useState<ServiceItem[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    contentService.getServices().then((res) => {
+      if (!cancelled) setServices(res || []);
+    }).catch(() => {
+      if (!cancelled) setServices([]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (services.length === 0) return null;
+
   return (
     <section id="services" className="bg-surface-sunken py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -28,8 +45,8 @@ export function ServicesSection() {
         </div>
 
         <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {SERVICES.map((service, index) => {
-            const Icon = ICONS[service.icon] ?? MessagesSquare;
+          {services.map((service, index) => {
+            const Icon = ICONS[service.category] ?? MessagesSquare;
             return (
               <motion.div
                 key={service.id}
@@ -44,21 +61,12 @@ export function ServicesSection() {
                       <Icon className="h-5 w-5" />
                     </div>
                     <h3 className="mt-4 font-display text-base font-semibold text-foreground">{service.name}</h3>
-                    <p className="mt-1.5 text-sm text-muted-foreground">{service.description}</p>
-
-                    <ul className="mt-4 space-y-2">
-                      {service.benefits.map((benefit) => (
-                        <li key={benefit} className="flex items-start gap-2 text-xs text-muted-foreground">
-                          <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent-500" />
-                          {benefit}
-                        </li>
-                      ))}
-                    </ul>
+                    <p className="mt-1.5 text-sm text-muted-foreground">{service.shortDesc}</p>
 
                     <div className="mt-6 flex flex-1 items-end justify-between border-t border-border pt-4">
                       <div>
                         <p className="text-[11px] text-muted-foreground">Starting at</p>
-                        <p className="font-display text-lg font-bold text-foreground">{formatCurrency(service.startingPrice)}</p>
+                        <p className="font-display text-lg font-bold text-foreground">{formatCurrency(service.startingFee)}</p>
                       </div>
                       <Button
                         size="sm"

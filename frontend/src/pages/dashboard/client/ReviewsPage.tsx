@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Edit2, Star, Trash2 } from "lucide-react";
-import { REVIEWS } from "@/data/testimonials.data";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -9,18 +8,29 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/states/EmptyState";
+import { ErrorState } from "@/components/states/ErrorState";
 import { toast } from "@/components/ui/toaster";
 import { useDisclosure } from "@/hooks/useDisclosure";
 import { formatDate } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes.constants";
+import { dashboardService } from "@/services/api/dashboard.service";
+import { useAsync } from "@/hooks/useAsync";
+import type { Review } from "@/types";
 
 export function ReviewsPage() {
-  const [reviews, setReviews] = useState(REVIEWS.map((r) => ({ ...r, authorName: "You" })));
+  const { data: initialReviews, isLoading, error, refetch } = useAsync(() => dashboardService.getReviews(), []);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const editModal = useDisclosure();
-  const [editing, setEditing] = useState<(typeof reviews)[number] | null>(null);
+  const [editing, setEditing] = useState<Review | null>(null);
   const [draft, setDraft] = useState("");
 
-  const openEdit = (review: (typeof reviews)[number]) => {
+  useEffect(() => {
+    if (initialReviews) {
+      setReviews(initialReviews.map((r) => ({ ...r, authorName: "You" })));
+    }
+  }, [initialReviews]);
+
+  const openEdit = (review: Review) => {
     setEditing(review);
     setDraft(review.comment);
     editModal.open();
@@ -38,6 +48,8 @@ export function ReviewsPage() {
     toast.success("Review deleted");
   };
 
+  if (error) return <ErrorState description={error} onRetry={refetch} />;
+
   return (
     <div className="space-y-6">
       <div>
@@ -45,7 +57,9 @@ export function ReviewsPage() {
         <p className="mt-1 text-sm text-muted-foreground">Reviews you've written for lawyers you've consulted.</p>
       </div>
 
-      {reviews.length === 0 ? (
+      {isLoading ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">Loading reviews…</p>
+      ) : reviews.length === 0 ? (
         <EmptyState
           title="No reviews yet"
           description="After a completed consultation, you can leave a review from My Appointments."
@@ -97,3 +111,5 @@ export function ReviewsPage() {
     </div>
   );
 }
+
+export default ReviewsPage;

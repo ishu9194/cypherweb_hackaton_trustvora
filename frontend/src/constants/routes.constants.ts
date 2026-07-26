@@ -13,7 +13,7 @@ export const ROUTES = {
   about: "/about",
   contact: "/contact",
   lawyerProfile: (id: string = ":id") => `/lawyers/${id}`,
-  bookLawyer: (id: string = ":id") => `/book/${id}`,
+  bookLawyer: (id: string = ":id") => `/booking/${id}`,
   bookingSuccess: "/booking/success",
 
   // Auth

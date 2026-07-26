@@ -5,9 +5,9 @@ import {
   Award, BadgeCheck, BookOpen, CalendarCheck, Camera, Download, Flag, GraduationCap,
   Heart, Landmark, MapPin, MessageCircle, Share2, Star, TrendingUp,
 } from "lucide-react";
-import { LAWYERS } from "@/data/lawyers.data";
+import type { Lawyer, Review } from "@/types";
+import { lawyersService } from "@/services/api/lawyers.service";
 import { getLawyerExtras } from "@/data/lawyerProfiles.data";
-import { REVIEWS } from "@/data/testimonials.data";
 import { getSlotsForDate } from "@/data/availability.data";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -29,24 +29,57 @@ import { downloadTextFile, formatCurrency, formatDate } from "@/lib/utils";
 export function LawyerProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const lawyer = LAWYERS.find((l) => l.id === id);
   const report = useDisclosure();
   const { isFavorited, toggleFavorite } = useFavoritesStore();
   const [helpfulReviews, setHelpfulReviews] = useState<Set<string>>(new Set());
+  const [lawyer, setLawyer] = useState<Lawyer | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [related, setRelated] = useState<Lawyer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
     setIsLoading(true);
-    const timer = setTimeout(() => setIsLoading(false), 500);
-    return () => clearTimeout(timer);
+    setNotFound(false);
+    Promise.all([lawyersService.getById(id), lawyersService.getReviews(id)]).then(([result, revList]) => {
+      if (cancelled) return;
+      if (result) {
+        setLawyer(result);
+        setReviews((result.reviews as Review[]) || revList || []);
+      } else {
+        setNotFound(true);
+      }
+      setIsLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
-  if (!lawyer) return <Navigate to={ROUTES.notFound} replace />;
-  if (isLoading) return <LawyerProfileSkeleton />;
+  useEffect(() => {
+    if (!lawyer) return;
+    let cancelled = false;
+    lawyersService
+      .list({ practiceArea: lawyer.specializations[0], pageSize: 4 })
+      .then(({ lawyers }) => {
+        if (cancelled) return;
+        setRelated(lawyers.filter((l) => l.id !== lawyer.id).slice(0, 3));
+      })
+      .catch(() => {
+        if (!cancelled) setRelated([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [lawyer]);
+
+  if (notFound) return <Navigate to={ROUTES.notFound} replace />;
+  if (isLoading || !lawyer) return <LawyerProfileSkeleton />;
 
   const extras = getLawyerExtras(lawyer.id);
   const favorited = isFavorited(lawyer.id);
-  const related = LAWYERS.filter((l) => l.id !== lawyer.id && l.specializations.some((s) => lawyer.specializations.includes(s))).slice(0, 3);
 
   const handleDownload = () => {
     const content = `${lawyer.name}\n${lawyer.qualification}\n${lawyer.court}\n\nSpecializations: ${lawyer.specializations.join(", ")}\nExperience: ${lawyer.experienceYears} years\nRating: ${lawyer.rating} (${lawyer.reviewCount} reviews)\nConsultation Fee: ${formatCurrency(lawyer.consultationFee)}\n\nBio:\n${lawyer.bio}\n\nGenerated from Trustix on ${new Date().toLocaleDateString("en-IN")}`;
@@ -235,7 +268,10 @@ export function LawyerProfilePage() {
                           <p className="mt-1 text-xs text-muted-foreground">{lawyer.reviewCount} reviews</p>
                         </div>
                       </div>
-                      {REVIEWS.map((review) => (
+                      {reviews.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No reviews yet for this lawyer.</p>
+                      ) : (
+                        reviews.map((review) => (
                         <div key={review.id} className="rounded-xl border border-border p-5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -261,7 +297,7 @@ export function LawyerProfilePage() {
                             {helpfulReviews.has(review.id) ? "✓ Marked helpful" : "Was this helpful?"}
                           </button>
                         </div>
-                      ))}
+                      )))}
                     </div>
                   ),
                 },

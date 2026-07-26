@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CalendarClock, Download, MessageCircle, Star, Video } from "lucide-react";
-import { APPOINTMENTS } from "@/data/testimonials.data";
 import type { Appointment, AppointmentStatus } from "@/types";
+import { appointmentsService } from "@/services/api/appointments.service";
+import { reviewsService } from "@/services/api/reviews.service";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -12,10 +13,11 @@ import { SearchBox } from "@/components/ui/search-box";
 import { Pagination } from "@/components/ui/pagination";
 import { Modal } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
+import { SkeletonCard } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/states/EmptyState";
 import { toast } from "@/components/ui/toaster";
 import { useDisclosure } from "@/hooks/useDisclosure";
-import { downloadTextFile, formatCurrency, formatDate, formatTime } from "@/lib/utils";
+import { cn, downloadTextFile, formatCurrency, formatDate, formatTime } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes.constants";
 
 const PAGE_SIZE = 5;
@@ -51,6 +53,9 @@ function AppointmentRow({ appointment, onReview }: { appointment: Appointment; o
               </Button>
             </>
           )}
+          {appointment.status === "pending" && (
+            <span className="text-xs text-muted-foreground">Awaiting lawyer confirmation</span>
+          )}
           {appointment.status === "completed" && (
             <>
               <Button size="sm" variant="outline" onClick={() => onReview(appointment)}>
@@ -82,16 +87,55 @@ function AppointmentRow({ appointment, onReview }: { appointment: Appointment; o
 }
 
 export function AppointmentsPage() {
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const reviewModal = useDisclosure();
   const [reviewTarget, setReviewTarget] = useState<Appointment | null>(null);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
+  const fetchAppointments = () => {
+    setIsLoading(true);
+    return appointmentsService
+      .list()
+      .then((data) => setAppointments(data))
+      .catch(() => toast.error("Couldn't load your appointments. Please try again."))
+      .finally(() => setIsLoading(false));
+  };
+
+  useEffect(() => {
+    fetchAppointments();
+  }, []);
+
+  // Pending appointments haven't been confirmed by the lawyer yet, but they
+  // still belong in "Upcoming" from the client's point of view — there's no
+  // separate tab for them.
   const filterByStatus = (status: AppointmentStatus) =>
-    APPOINTMENTS.filter((a) => a.status === status && a.lawyerName.toLowerCase().includes(query.toLowerCase()));
+    appointments.filter((a) => {
+      const matchesStatus = status === "upcoming" ? a.status === "upcoming" || a.status === "pending" : a.status === status;
+      return matchesStatus && a.lawyerName.toLowerCase().includes(query.toLowerCase());
+    });
+
+  const openReviewModal = (target: Appointment) => {
+    setReviewTarget(target);
+    setReviewRating(0);
+    setHoverRating(0);
+    setReviewText("");
+    reviewModal.open();
+  };
 
   const renderList = (status: AppointmentStatus) => {
+    if (isLoading) {
+      return (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      );
+    }
     const list = filterByStatus(status);
     const pageItems = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
     if (list.length === 0) {
@@ -106,16 +150,39 @@ export function AppointmentsPage() {
     }
     return (
       <div className="space-y-3">
-        {pageItems.map((a) => <AppointmentRow key={a.id} appointment={a} onReview={(target) => { setReviewTarget(target); reviewModal.open(); }} />)}
+        {pageItems.map((a) => <AppointmentRow key={a.id} appointment={a} onReview={openReviewModal} />)}
         <Pagination page={page} totalPages={Math.max(1, Math.ceil(list.length / PAGE_SIZE))} onPageChange={setPage} className="pt-2" />
       </div>
     );
   };
 
-  const submitReview = () => {
-    reviewModal.close();
-    toast.success(`Review submitted for ${reviewTarget?.lawyerName}`);
-    setReviewText("");
+  const submitReview = async () => {
+    if (!reviewTarget) return;
+    if (reviewRating === 0) {
+      toast.error("Please select a star rating");
+      return;
+    }
+    if (!reviewText.trim()) {
+      toast.error("Please share a few words about your experience");
+      return;
+    }
+    setIsSubmittingReview(true);
+    try {
+      await reviewsService.create({
+        lawyerId: reviewTarget.lawyerId,
+        rating: reviewRating,
+        comment: reviewText.trim(),
+      });
+      toast.success(`Review submitted for ${reviewTarget.lawyerName}`);
+      reviewModal.close();
+      setReviewText("");
+      setReviewRating(0);
+      await fetchAppointments();
+    } catch {
+      toast.error("Couldn't submit your review. Please try again.");
+    } finally {
+      setIsSubmittingReview(false);
+    }
   };
 
   const tabs = useMemo(
@@ -125,7 +192,7 @@ export function AppointmentsPage() {
       { value: "cancelled", label: "Cancelled", content: renderList("cancelled") },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [query, page],
+    [query, page, appointments, isLoading],
   );
 
   return (
@@ -144,10 +211,31 @@ export function AppointmentsPage() {
         open={reviewModal.isOpen}
         onOpenChange={reviewModal.close}
         title={`Review ${reviewTarget?.lawyerName ?? ""}`}
-        footer={<><Button variant="outline" onClick={reviewModal.close}>Cancel</Button><Button onClick={submitReview}>Submit Review</Button></>}
+        footer={
+          <>
+            <Button variant="outline" onClick={reviewModal.close} disabled={isSubmittingReview}>Cancel</Button>
+            <Button onClick={submitReview} isLoading={isSubmittingReview}>Submit Review</Button>
+          </>
+        }
       >
         <div className="mb-3 flex gap-1 text-amber-500">
-          {Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-5 w-5 cursor-pointer fill-current" />)}
+          {Array.from({ length: 5 }).map((_, i) => {
+            const value = i + 1;
+            const filled = value <= (hoverRating || reviewRating);
+            return (
+              <button
+                key={i}
+                type="button"
+                aria-label={`Rate ${value} star${value > 1 ? "s" : ""}`}
+                onClick={() => setReviewRating(value)}
+                onMouseEnter={() => setHoverRating(value)}
+                onMouseLeave={() => setHoverRating(0)}
+                className="p-0.5"
+              >
+                <Star className={cn("h-5 w-5", filled ? "fill-current" : "fill-none")} />
+              </button>
+            );
+          })}
         </div>
         <Textarea placeholder="Share your experience…" value={reviewText} onChange={(e) => setReviewText(e.target.value)} rows={4} />
       </Modal>

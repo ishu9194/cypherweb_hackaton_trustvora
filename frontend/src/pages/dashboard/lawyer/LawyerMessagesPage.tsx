@@ -1,24 +1,35 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Check, CheckCheck, Mic, Paperclip, Image as ImageIcon, Send, Smile, FileText } from "lucide-react";
-import { LAWYER_CONVERSATIONS } from "@/data/lawyerConversations.data";
-import type { ChatMessage } from "@/data/dashboardExtras.data";
+import type { ClientConversation } from "@/services/api/lawyerDashboard.service";
+import type { ChatMessage } from "@/services/api/dashboard.service";
 import { Avatar } from "@/components/ui/avatar";
 import { SearchBox } from "@/components/ui/search-box";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/states/ErrorState";
 import { toast } from "@/components/ui/toaster";
 import { formatTime, cn } from "@/lib/utils";
+import { lawyerDashboardService } from "@/services/api/lawyerDashboard.service";
+import { useAsync } from "@/hooks/useAsync";
 
 const EMOJIS = ["👍", "❤️", "😂", "🙏", "🎉", "👏", "😊", "🔥"];
 
 export function LawyerMessagesPage() {
-  const [conversations, setConversations] = useState(LAWYER_CONVERSATIONS);
-  const [activeId, setActiveId] = useState(conversations[0]?.id);
+  const { data: initialConvs, isLoading, error, refetch } = useAsync(() => lawyerDashboardService.getConversations(), []);
+  const [conversations, setConversations] = useState<ClientConversation[]>([]);
+  const [activeId, setActiveId] = useState<string | undefined>(undefined);
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (initialConvs && initialConvs.length > 0) {
+      setConversations(initialConvs);
+      if (!activeId) setActiveId(initialConvs[0].id);
+    }
+  }, [initialConvs, activeId]);
 
   const active = conversations.find((c) => c.id === activeId) ?? conversations[0];
   const filtered = conversations.filter((c) => c.clientName.toLowerCase().includes(query.toLowerCase()));
@@ -29,15 +40,18 @@ export function LawyerMessagesPage() {
 
   const sendMessage = () => {
     if (!draft.trim() || !active) return;
-    const message: ChatMessage = { id: `m-${Date.now()}`, senderId: "me", text: draft, timestamp: new Date().toISOString(), read: false };
+    const message: ChatMessage = { id: `m-${Date.now()}`, senderId: "me", senderName: "Me", text: draft, timestamp: new Date().toISOString(), read: false };
     setConversations((prev) => prev.map((c) => (c.id === active.id ? { ...c, messages: [...c.messages, message], lastMessage: draft, lastMessageAt: message.timestamp } : c)));
+    const textSent = draft;
     setDraft("");
     setShowEmoji(false);
+
+    lawyerDashboardService.sendReply(active.id, textSent).catch(() => {});
 
     setIsTyping(true);
     setTimeout(() => {
       setIsTyping(false);
-      const reply: ChatMessage = { id: `m-${Date.now() + 1}`, senderId: "client", text: "Got it, thank you!", timestamp: new Date().toISOString(), read: true };
+      const reply: ChatMessage = { id: `m-${Date.now() + 1}`, senderId: "client", senderName: active.clientName, text: "Got it, thank you!", timestamp: new Date().toISOString(), read: true };
       setConversations((prev) => prev.map((c) => (c.id === active.id ? { ...c, messages: [...c.messages, reply], lastMessage: reply.text!, lastMessageAt: reply.timestamp } : c)));
     }, 1800);
   };
@@ -52,10 +66,20 @@ export function LawyerMessagesPage() {
   const attach = (type: "image" | "document" | "voice") => {
     if (!active) return;
     const names = { image: "Photo.jpg", document: "Document.pdf", voice: "Voice note" };
-    const message: ChatMessage = { id: `m-${Date.now()}`, senderId: "me", attachment: { type, name: names[type], duration: type === "voice" ? "0:14" : undefined }, timestamp: new Date().toISOString(), read: false };
+    const message: ChatMessage = { id: `m-${Date.now()}`, senderId: "me", senderName: "Me", text: names[type], attachment: { type, name: names[type], url: "#", duration: type === "voice" ? "0:14" : undefined }, timestamp: new Date().toISOString(), read: false };
     setConversations((prev) => prev.map((c) => (c.id === active.id ? { ...c, messages: [...c.messages, message] } : c)));
     toast.success(`${type === "voice" ? "Voice message" : "File"} sent`);
   };
+
+  if (error) return <ErrorState description={error} onRetry={refetch} />;
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[calc(100vh-8rem)] items-center justify-center rounded-2xl border border-border bg-surface text-sm text-muted-foreground">
+        Loading conversations…
+      </div>
+    );
+  }
 
   if (!active) return null;
 
@@ -72,17 +96,17 @@ export function LawyerMessagesPage() {
               key={conv.id}
               type="button"
               onClick={() => setActiveId(conv.id)}
-              className={cn("flex w-full items-center gap-3 border-b border-border p-4 text-left transition-colors hover:bg-surface-sunken", conv.id === activeId && "bg-surface-sunken")}
+              className={cn("flex w-full items-center gap-3 border-b border-border p-4 text-left transition-colors hover:bg-surface-sunken", conv.id === active.id && "bg-surface-sunken")}
             >
               <Avatar src={conv.clientAvatarUrl} name={conv.clientName} size="md" online={conv.online} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
                   <p className="truncate text-sm font-medium text-foreground">{conv.clientName}</p>
-                  <span className="shrink-0 text-[10px] text-muted-foreground">{formatTime(conv.lastMessageAt)}</span>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">{formatTime(conv.lastMessageAt ?? conv.lastMessageTime ?? "")}</span>
                 </div>
                 <p className="truncate text-xs text-muted-foreground">{conv.lastMessage}</p>
               </div>
-              {conv.unread > 0 && <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[10px] font-semibold text-white">{conv.unread}</span>}
+              {(conv.unreadCount ?? conv.unread ?? 0) > 0 && <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[10px] font-semibold text-white">{conv.unreadCount ?? conv.unread}</span>}
             </button>
           ))}
         </div>
@@ -157,3 +181,5 @@ export function LawyerMessagesPage() {
     </div>
   );
 }
+
+export default LawyerMessagesPage;

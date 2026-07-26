@@ -1,51 +1,83 @@
-import { LAWYERS } from "@/data/lawyers.data";
-import { REVIEWS } from "@/data/testimonials.data";
-import type { Lawyer, Review } from "@/types";
-import { sleep } from "@/lib/utils";
+import type { ConsultationType, Lawyer, Review } from "@/types";
+import type { SortOption } from "@/lib/lawyerFilters";
 import { apiClient } from "./client";
 import { ENDPOINTS } from "./endpoints";
-import { USE_MOCK_DATA } from "./client";
 
-export interface LawyerFilters {
+const SORT_MAP: Record<SortOption, string> = {
+  relevance: "rating",
+  rating: "rating",
+  experience: "experience",
+  "fee-low": "priceAsc",
+  "fee-high": "priceDesc",
+  newest: "rating",
+  reviews: "rating",
+};
+
+export interface LawyerListParams {
+  search?: string;
   practiceArea?: string;
-  city?: string;
-  language?: string;
-  verifiedOnly?: boolean;
-  onlineOnly?: boolean;
   minRating?: number;
+  maxPrice?: number;
+  consultationType?: ConsultationType;
+  sort?: SortOption;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface LawyerListMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface LawyerListResult {
+  lawyers: Lawyer[];
+  meta: LawyerListMeta;
+}
+
+function buildQuery(params: LawyerListParams): string {
+  const search = new URLSearchParams();
+  if (params.search) search.set("search", params.search);
+  if (params.practiceArea) search.set("practiceArea", params.practiceArea);
+  if (params.minRating) search.set("minRating", String(params.minRating));
+  if (params.maxPrice) search.set("maxPrice", String(params.maxPrice));
+  if (params.consultationType) search.set("consultationType", params.consultationType);
+  if (params.sort) search.set("sort", SORT_MAP[params.sort] ?? "rating");
+  if (params.page) search.set("page", String(params.page));
+  if (params.pageSize) search.set("pageSize", String(params.pageSize));
+  const qs = search.toString();
+  return qs ? `?${qs}` : "";
 }
 
 export const lawyersService = {
-  async list(filters: LawyerFilters = {}): Promise<Lawyer[]> {
-    if (USE_MOCK_DATA) {
-      await sleep(400);
-      return LAWYERS.filter((lawyer) => {
-        if (filters.practiceArea && !lawyer.specializations.includes(filters.practiceArea)) return false;
-        if (filters.city && lawyer.city !== filters.city) return false;
-        if (filters.language && !lawyer.languages.includes(filters.language)) return false;
-        if (filters.verifiedOnly && !lawyer.verified) return false;
-        if (filters.onlineOnly && !lawyer.online) return false;
-        if (filters.minRating && lawyer.rating < filters.minRating) return false;
-        return true;
-      });
+  /** Calls GET /api/v1/lawyers with the active filters as query params. */
+  async list(params: LawyerListParams = {}): Promise<LawyerListResult> {
+    try {
+      const envelope = await apiClient.get<{ data: Lawyer[]; meta: LawyerListMeta }>(
+        `${ENDPOINTS.lawyers.list}${buildQuery(params)}`,
+        { raw: true },
+      );
+      return { lawyers: envelope.data ?? [], meta: envelope.meta ?? { page: 1, pageSize: 12, total: 0, totalPages: 1 } };
+    } catch {
+      return { lawyers: [], meta: { page: 1, pageSize: 12, total: 0, totalPages: 1 } };
     }
-    return apiClient.get<Lawyer[]>(ENDPOINTS.lawyers.list);
   },
 
+  /** Calls GET /api/v1/lawyers/:id dynamically */
   async getById(id: string): Promise<Lawyer | null> {
-    if (USE_MOCK_DATA) {
-      await sleep(300);
-      return LAWYERS.find((lawyer) => lawyer.id === id) ?? null;
+    try {
+      return await apiClient.get<Lawyer>(ENDPOINTS.lawyers.detail(id));
+    } catch {
+      return null;
     }
-    return apiClient.get<Lawyer>(ENDPOINTS.lawyers.detail(id));
   },
 
   async getReviews(id: string): Promise<Review[]> {
-    if (USE_MOCK_DATA) {
-      await sleep(300);
-      void id; // dummy data isn't per-lawyer yet; real API will filter server-side
-      return REVIEWS;
+    try {
+      return await apiClient.get<Review[]>(ENDPOINTS.lawyers.reviews(id));
+    } catch {
+      return [];
     }
-    return apiClient.get<Review[]>(ENDPOINTS.lawyers.reviews(id));
   },
 };

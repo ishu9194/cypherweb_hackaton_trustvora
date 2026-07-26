@@ -1,5 +1,4 @@
 import { Sparkles } from "lucide-react";
-import { LAWYERS } from "@/data/lawyers.data";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { SearchBox } from "@/components/ui/search-box";
 import { Button } from "@/components/ui/button";
@@ -19,9 +18,9 @@ import { AnimatePresence, motion } from "framer-motion";
 
 export function FindLawyersPage() {
   const {
-    filters, updateFilter, clearAll, results, pageResults, page, setPage,
+    filters, updateFilter, clearAll, resultCount, pageResults, page, setPage,
     totalPages, isLoading, view, setView, activeFilterCount,
-  } = useLawyerFilters(LAWYERS);
+  } = useLawyerFilters();
   const advanced = useDisclosure();
 
   return (
@@ -31,7 +30,7 @@ export function FindLawyersPage() {
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground sm:text-3xl">Find Your Lawyer</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Search {LAWYERS.length}+ verified advocates across India.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Search verified advocates across India.</p>
         </div>
         <SearchBox
           placeholder="Search by lawyer name…"
@@ -46,7 +45,7 @@ export function FindLawyersPage() {
 
         <div className="min-w-0 flex-1 space-y-5">
           <ResultsToolbar
-            resultCount={results.length}
+            resultCount={resultCount}
             sort={filters.sort}
             onSortChange={(v) => updateFilter("sort", v)}
             view={view}
@@ -88,10 +87,10 @@ export function FindLawyersPage() {
             <Pagination page={page} totalPages={totalPages} onPageChange={setPage} className="pt-4" />
           )}
 
-          {!isLoading && results.length > 0 && results.length < LAWYERS.length && (
+          {!isLoading && pageResults.length > 0 && pageResults.length < resultCount && (
             <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border py-4 text-xs text-muted-foreground">
               <Sparkles className="h-3.5 w-3.5 text-brand-500" />
-              Showing {results.length} of {LAWYERS.length} lawyers matching your filters
+              Showing {pageResults.length} of {resultCount} lawyers matching your filters
               <Button variant="link" size="sm" onClick={clearAll} className="h-auto p-0 text-xs">Reset</Button>
             </div>
           )}
@@ -104,7 +103,7 @@ export function FindLawyersPage() {
         filters={filters}
         onChange={updateFilter}
         onClearAll={clearAll}
-        resultCount={results.length}
+        resultCount={resultCount}
       />
 
       <CompareBar />

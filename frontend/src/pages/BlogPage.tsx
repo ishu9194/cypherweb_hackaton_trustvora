@@ -2,26 +2,34 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Clock } from "lucide-react";
-import { BLOG_POSTS, BLOG_CATEGORIES } from "@/data/blog.data";
+const BLOG_CATEGORIES = ["All", "Startup Law", "Real Estate", "Taxation", "Employment", "Property Law"];
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { SearchBox } from "@/components/ui/search-box";
 import { EmptyState } from "@/components/states/EmptyState";
+import { ErrorState } from "@/components/states/ErrorState";
 import { toast } from "@/components/ui/toaster";
 import { formatDate, cn } from "@/lib/utils";
+import { contentService } from "@/services/api/content.service";
+import { useAsync } from "@/hooks/useAsync";
 
 export function BlogPage() {
+  const { data: posts, isLoading, error, refetch } = useAsync(() => contentService.getBlogPosts(), []);
   const [category, setCategory] = useState<string>("All");
   const [query, setQuery] = useState("");
-  const featured = BLOG_POSTS.find((p) => p.featured) ?? BLOG_POSTS[0];
 
-  const filtered = useMemo(
-    () =>
-      BLOG_POSTS.filter((p) => p.id !== featured.id)
-        .filter((p) => category === "All" || p.category === category)
-        .filter((p) => p.title.toLowerCase().includes(query.toLowerCase())),
-    [category, query, featured.id],
-  );
+  const postsList = posts ?? [];
+  const featured = postsList.find((p) => p.featured) ?? postsList[0];
+
+  const filtered = useMemo(() => {
+    if (!featured) return [];
+    return postsList
+      .filter((p) => p.id !== featured.id)
+      .filter((p) => category === "All" || p.category === category)
+      .filter((p) => p.title.toLowerCase().includes(query.toLowerCase()));
+  }, [postsList, category, query, featured]);
+
+  if (error) return <ErrorState description={error} onRetry={refetch} />;
 
   return (
     <div className="pb-24">
@@ -32,25 +40,31 @@ export function BlogPage() {
           <p className="mx-auto mt-4 max-w-xl text-muted-foreground">Practical guidance from verified advocates — no jargon, no fear-mongering.</p>
         </div>
 
-        <motion.button
-          type="button"
-          onClick={() => toast.success("Opening article…")}
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={cn("group mt-12 block w-full overflow-hidden rounded-3xl bg-gradient-to-br p-8 text-left text-white shadow-lifted sm:p-12", featured.coverGradient)}
-        >
-          <Badge variant="outline" className="border-white/30 text-white">{featured.category}</Badge>
-          <h2 className="mt-4 max-w-2xl font-display text-2xl font-bold leading-snug sm:text-3xl">{featured.title}</h2>
-          <p className="mt-3 max-w-xl text-sm text-white/80">{featured.excerpt}</p>
-          <div className="mt-6 flex items-center gap-3">
-            <Avatar src={featured.authorAvatarUrl} name={featured.author} size="sm" />
-            <div className="text-xs text-white/80">
-              <p className="font-medium text-white">{featured.author}</p>
-              <p>{formatDate(featured.date)} · {featured.readTimeMinutes} min read</p>
-            </div>
-            <ArrowRight className="ml-auto h-5 w-5 transition-transform group-hover:translate-x-1" />
+        {isLoading || !featured ? (
+          <div className="mt-12 flex h-64 items-center justify-center rounded-3xl border border-border bg-surface text-sm text-muted-foreground">
+            Loading articles…
           </div>
-        </motion.button>
+        ) : (
+          <motion.button
+            type="button"
+            onClick={() => toast.success("Opening article…")}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={cn("group mt-12 block w-full overflow-hidden rounded-3xl bg-gradient-to-br p-8 text-left text-white shadow-lifted sm:p-12", featured.coverGradient)}
+          >
+            <Badge variant="outline" className="border-white/30 text-white">{featured.category}</Badge>
+            <h2 className="mt-4 max-w-2xl font-display text-2xl font-bold leading-snug sm:text-3xl">{featured.title}</h2>
+            <p className="mt-3 max-w-xl text-sm text-white/80">{featured.excerpt}</p>
+            <div className="mt-6 flex items-center gap-3">
+              <Avatar src={featured.authorAvatarUrl} name={featured.author} size="sm" />
+              <div className="text-xs text-white/80">
+                <p className="font-medium text-white">{featured.author}</p>
+                <p>{formatDate(featured.date)} · {featured.readTimeMinutes} min read</p>
+              </div>
+              <ArrowRight className="ml-auto h-5 w-5 transition-transform group-hover:translate-x-1" />
+            </div>
+          </motion.button>
+        )}
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
@@ -73,7 +87,9 @@ export function BlogPage() {
           <SearchBox placeholder="Search articles…" onSearch={setQuery} className="sm:w-64" />
         </div>
 
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <p className="mt-10 py-8 text-center text-sm text-muted-foreground">Loading blog catalog…</p>
+        ) : filtered.length === 0 ? (
           <EmptyState title="No articles found" description="Try a different category or search term." className="mt-10" />
         ) : (
           <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -113,3 +129,5 @@ export function BlogPage() {
     </div>
   );
 }
+
+export default BlogPage;

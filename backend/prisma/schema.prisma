@@ -33,6 +33,7 @@ model User {
   trustLogs      TrustLog[]
   lawyerProfile  Lawyer?
   reviewsWritten Review[]
+  appointments   Appointment[]
 }
 
 model Verification {
@@ -92,6 +93,7 @@ model Lawyer {
   joinedAt             DateTime @default(now())
 
   reviews              Review[]
+  appointments         Appointment[]
 
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
@@ -122,5 +124,34 @@ model Review {
   verifiedClient  Boolean  @default(false)
   createdAt       DateTime @default(now())
 
+  @@index([lawyerId])
+}
+
+/// Lowercase to match the frontend's AppointmentStatus union directly —
+/// no case-mapping layer needed in the service/controller (unlike Role).
+enum AppointmentStatus {
+  pending
+  upcoming
+  completed
+  cancelled
+}
+
+model Appointment {
+  id              String            @id @default(cuid())
+  clientId        String
+  client          User              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientName      String
+  lawyerId        String
+  lawyer          Lawyer            @relation(fields: [lawyerId], references: [id], onDelete: Cascade)
+  lawyerName      String
+  lawyerAvatarUrl String
+  date            DateTime
+  type            String
+  status          AppointmentStatus @default(pending)
+  fee             Int
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([clientId])
   @@index([lawyerId])
 }

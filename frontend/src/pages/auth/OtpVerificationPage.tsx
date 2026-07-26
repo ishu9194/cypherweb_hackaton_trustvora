@@ -13,6 +13,7 @@ interface OtpLocationState {
   email: string;
   purpose: "reset" | "register";
   name?: string;
+  password?: string;
   role?: UserRole;
 }
 
@@ -54,7 +55,7 @@ export function OtpVerificationPage() {
       navigate(ROUTES.resetPassword, { state: { email: state.email } });
     } else {
       try {
-        await registerUser(state.name ?? "New User", state.email, state.role ?? "client");
+        await registerUser(state.name ?? "New User", state.email, state.password ?? "", state.role ?? "client");
         navigate(ROUTES.emailVerified, { state: { email: state.email } });
       } catch {
         toast.error("Couldn't create your account. Please try registering again.");

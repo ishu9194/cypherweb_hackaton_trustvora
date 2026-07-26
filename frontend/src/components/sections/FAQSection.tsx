@@ -1,17 +1,30 @@
-import { useMemo, useState } from "react";
-import { FAQ_ITEMS } from "@/data/blog.data";
+import { useEffect, useMemo, useState } from "react";
+import { contentService, type FaqItem } from "@/services/api/content.service";
 import { Accordion } from "@/components/ui/accordion";
 import { SearchBox } from "@/components/ui/search-box";
 import { EmptyState } from "@/components/states/EmptyState";
 
 export function FAQSection() {
   const [query, setQuery] = useState("");
+  const [faqs, setFaqs] = useState<FaqItem[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    contentService.getFaqs().then((res) => {
+      if (!cancelled) setFaqs(res || []);
+    }).catch(() => {
+      if (!cancelled) setFaqs([]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filtered = useMemo(() => {
-    if (!query.trim()) return FAQ_ITEMS;
+    if (!query.trim()) return faqs;
     const q = query.toLowerCase();
-    return FAQ_ITEMS.filter((item) => item.question.toLowerCase().includes(q) || item.answer.toLowerCase().includes(q));
-  }, [query]);
+    return faqs.filter((item) => item.question.toLowerCase().includes(q) || item.answer.toLowerCase().includes(q));
+  }, [query, faqs]);
 
   return (
     <section id="faq" className="mx-auto max-w-3xl px-4 py-24 sm:px-6 lg:px-8">
@@ -27,7 +40,7 @@ export function FAQSection() {
         {filtered.length > 0 ? (
           <Accordion items={filtered.map((item, i) => ({ value: `faq-${i}`, question: item.question, answer: item.answer }))} />
         ) : (
-          <EmptyState title="No matching questions" description="Try a different search term, or browse all questions above." />
+          <EmptyState title="No questions found" description="Try a different search term, or reach out to support." />
         )}
       </div>
     </section>

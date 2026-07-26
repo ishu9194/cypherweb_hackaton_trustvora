@@ -1,17 +1,37 @@
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Scale as ScaleIcon, X } from "lucide-react";
+import type { Lawyer } from "@/types";
+import { lawyersService } from "@/services/api/lawyers.service";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { MAX_COMPARE, useCompareStore } from "@/hooks/useCompareStore";
-import { LAWYERS } from "@/data/lawyers.data";
 import { ROUTES } from "@/constants/routes.constants";
 
 /** Sticky bottom bar showing lawyers queued for comparison. "Compare Now" routes to the full comparison page. */
 export function CompareBar() {
   const navigate = useNavigate();
   const { compareList, clearCompare } = useCompareStore();
-  const lawyers = LAWYERS.filter((lawyer) => compareList.includes(lawyer.id));
+  const [lawyers, setLawyers] = useState<Lawyer[]>([]);
+
+  useEffect(() => {
+    if (compareList.length === 0) {
+      setLawyers([]);
+      return;
+    }
+    let cancelled = false;
+    Promise.all(compareList.map((id) => lawyersService.getById(id))).then((results) => {
+      if (!cancelled) {
+        setLawyers(results.filter((l): l is Lawyer => l !== null));
+      }
+    }).catch(() => {
+      if (!cancelled) setLawyers([]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [compareList]);
 
   return (
     <AnimatePresence>
@@ -59,4 +79,3 @@ export function CompareBar() {
     </AnimatePresence>
   );
 }
-

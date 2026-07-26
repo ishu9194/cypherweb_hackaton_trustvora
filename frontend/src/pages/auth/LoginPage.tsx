@@ -38,7 +38,7 @@ export function LoginPage() {
 
   const onSubmit = async (values: LoginFormValues) => {
     try {
-      await login(values.email, values.password, role);
+      await login(values.email, values.password);
       toast.success("Welcome back!");
       const redirectTo = (location.state as { from?: Location })?.from?.pathname;
       navigate(redirectTo || ROUTES.home);
@@ -50,7 +50,7 @@ export function LoginPage() {
   const handleDemoLogin = async (demoRole: UserRole) => {
     const email = demoRole === "lawyer" ? "lawyer@trustix.dev" : "client@trustix.dev";
     try {
-      await login(email, "demo1234", demoRole);
+      await login(email, "demo1234");
       toast.success(`Logged in as demo ${demoRole}`);
       navigate(demoRole === "lawyer" ? ROUTES.lawyerDashboard : ROUTES.clientDashboard);
     } catch {

@@ -1,16 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Download, File, Search, Trash2, Upload, Edit2 } from "lucide-react";
-import { DASHBOARD_DOCUMENTS, type DashboardDocument } from "@/data/dashboardExtras.data";
+import type { DashboardDocument } from "@/services/api/dashboard.service";
 import { SearchBox } from "@/components/ui/search-box";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/states/EmptyState";
+import { ErrorState } from "@/components/states/ErrorState";
 import { toast } from "@/components/ui/toaster";
 import { useDisclosure } from "@/hooks/useDisclosure";
 import { downloadTextFile, formatDate, cn } from "@/lib/utils";
+import { dashboardService } from "@/services/api/dashboard.service";
+import { useAsync } from "@/hooks/useAsync";
 
 const CATEGORIES = [
   { value: "all", label: "All categories" },
@@ -21,7 +24,8 @@ const CATEGORIES = [
 ];
 
 export function DocumentsPage() {
-  const [docs, setDocs] = useState(DASHBOARD_DOCUMENTS);
+  const { data: initialDocs, isLoading, error, refetch } = useAsync(() => dashboardService.getDocuments(), []);
+  const [docs, setDocs] = useState<DashboardDocument[]>([]);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [dragging, setDragging] = useState(false);
@@ -29,6 +33,10 @@ export function DocumentsPage() {
   const renameModal = useDisclosure();
   const [renaming, setRenaming] = useState<DashboardDocument | null>(null);
   const [newName, setNewName] = useState("");
+
+  useEffect(() => {
+    if (initialDocs) setDocs(initialDocs);
+  }, [initialDocs]);
 
   const filtered = docs.filter((d) => d.name.toLowerCase().includes(query.toLowerCase()) && (category === "all" || d.category === category));
 
@@ -69,11 +77,13 @@ export function DocumentsPage() {
     toast.success("Download started");
   };
 
+  if (error) return <ErrorState description={error} onRetry={refetch} />;
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="font-display text-xl font-bold text-foreground">Documents</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{docs.length} documents stored securely.</p>
+        <p className="mt-1 text-sm text-muted-foreground">{isLoading ? "Loading documents…" : `${docs.length} documents stored securely.`}</p>
       </div>
 
       <label
@@ -95,7 +105,9 @@ export function DocumentsPage() {
         <Select options={CATEGORIES} value={category} onValueChange={setCategory} className="sm:w-52" />
       </div>
 
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">Loading documents…</p>
+      ) : filtered.length === 0 ? (
         <EmptyState icon={<Search className="h-5 w-5" />} title="No documents found" description="Try a different search or category." />
       ) : (
         <div className="space-y-2">
@@ -127,3 +139,5 @@ export function DocumentsPage() {
     </div>
   );
 }
+
+export default DocumentsPage;

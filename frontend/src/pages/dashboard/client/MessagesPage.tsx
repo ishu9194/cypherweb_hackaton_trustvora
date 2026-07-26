@@ -2,28 +2,39 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Check, CheckCheck, MessageSquare, Mic, Paperclip, Image as ImageIcon, Send, Smile, FileText } from "lucide-react";
-import { CONVERSATIONS, type ChatMessage } from "@/data/dashboardExtras.data";
+import type { ChatMessage, Conversation } from "@/services/api/dashboard.service";
 import { Avatar } from "@/components/ui/avatar";
 import { SearchBox } from "@/components/ui/search-box";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/states/ErrorState";
 import { toast } from "@/components/ui/toaster";
 import { EmptyState } from "@/components/states/EmptyState";
 import { ROUTES } from "@/constants/routes.constants";
 import { formatTime, cn } from "@/lib/utils";
+import { dashboardService } from "@/services/api/dashboard.service";
+import { useAsync } from "@/hooks/useAsync";
 
 const EMOJIS = ["👍", "❤️", "😂", "🙏", "🎉", "👏", "😊", "🔥"];
 
 export function MessagesPage() {
-  const [conversations, setConversations] = useState(CONVERSATIONS);
-  const [activeId, setActiveId] = useState(conversations[0]?.id);
+  const { data: initialConvs, isLoading, error, refetch } = useAsync(() => dashboardService.getMessages(), []);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeId, setActiveId] = useState<string | undefined>(undefined);
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    if (initialConvs && initialConvs.length > 0) {
+      setConversations(initialConvs);
+      if (!activeId) setActiveId(initialConvs[0].id);
+    }
+  }, [initialConvs, activeId]);
+
   const active = conversations.find((c) => c.id === activeId) ?? conversations[0];
-  const filtered = conversations.filter((c) => c.lawyerName.toLowerCase().includes(query.toLowerCase()));
+  const filtered = conversations.filter((c) => (c.lawyerName ?? "").toLowerCase().includes(query.toLowerCase()));
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -33,14 +44,17 @@ export function MessagesPage() {
     if (!draft.trim() || !active) return;
     const message: ChatMessage = { id: `m-${Date.now()}`, senderId: "me", text: draft, timestamp: new Date().toISOString(), read: false };
     setConversations((prev) => prev.map((c) => (c.id === active.id ? { ...c, messages: [...c.messages, message], lastMessage: draft, lastMessageAt: message.timestamp } : c)));
+    const sentText = draft;
     setDraft("");
     setShowEmoji(false);
 
-    // Simulate the lawyer typing back
+    dashboardService.sendMessage(active.id, sentText).catch(() => {});
+
+    // Simulate lawyer typing response
     setIsTyping(true);
     setTimeout(() => {
       setIsTyping(false);
-      const reply: ChatMessage = { id: `m-${Date.now() + 1}`, senderId: active.lawyerId, text: "Thanks for the update — I'll take a look shortly.", timestamp: new Date().toISOString(), read: true };
+      const reply: ChatMessage = { id: `m-${Date.now() + 1}`, senderId: active.lawyerId ?? active.id ?? "", text: "Thanks for the update — I'll take a look shortly.", timestamp: new Date().toISOString(), read: true };
       setConversations((prev) => prev.map((c) => (c.id === active.id ? { ...c, messages: [...c.messages, reply], lastMessage: reply.text!, lastMessageAt: reply.timestamp } : c)));
     }, 1800);
   };
@@ -59,10 +73,20 @@ export function MessagesPage() {
   const attach = (type: "image" | "document" | "voice") => {
     if (!active) return;
     const names = { image: "Photo.jpg", document: "Document.pdf", voice: "Voice note" };
-    const message: ChatMessage = { id: `m-${Date.now()}`, senderId: "me", attachment: { type, name: names[type], duration: type === "voice" ? "0:12" : undefined }, timestamp: new Date().toISOString(), read: false };
+    const message: ChatMessage = { id: `m-${Date.now()}`, senderId: "me", text: names[type], attachment: { type, name: names[type], url: "#", duration: type === "voice" ? "0:12" : undefined }, timestamp: new Date().toISOString(), read: false };
     setConversations((prev) => prev.map((c) => (c.id === active.id ? { ...c, messages: [...c.messages, message] } : c)));
     toast.success(`${type === "voice" ? "Voice message" : "File"} sent`);
   };
+
+  if (error) return <ErrorState description={error} onRetry={refetch} />;
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[calc(100vh-8rem)] items-center justify-center rounded-2xl border border-border bg-surface text-sm text-muted-foreground">
+        Loading messages…
+      </div>
+    );
+  }
 
   if (conversations.length === 0) {
     return (
@@ -96,17 +120,17 @@ export function MessagesPage() {
               key={conv.id}
               type="button"
               onClick={() => setActiveId(conv.id)}
-              className={cn("flex w-full items-center gap-3 border-b border-border p-4 text-left transition-colors hover:bg-surface-sunken", conv.id === activeId && "bg-surface-sunken")}
+              className={cn("flex w-full items-center gap-3 border-b border-border p-4 text-left transition-colors hover:bg-surface-sunken", conv.id === active.id && "bg-surface-sunken")}
             >
-              <Avatar src={conv.lawyerAvatarUrl} name={conv.lawyerName} size="md" online={conv.online} />
+              <Avatar src={conv.lawyerAvatarUrl ?? conv.partnerAvatarUrl} name={conv.lawyerName ?? conv.partnerName ?? ""} size="md" online={conv.online} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
-                  <p className="truncate text-sm font-medium text-foreground">{conv.lawyerName}</p>
-                  <span className="shrink-0 text-[10px] text-muted-foreground">{formatTime(conv.lastMessageAt)}</span>
+                  <p className="truncate text-sm font-medium text-foreground">{conv.lawyerName ?? conv.partnerName ?? ""}</p>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">{formatTime(conv.lastMessageAt ?? conv.lastMessageTime ?? "")}</span>
                 </div>
                 <p className="truncate text-xs text-muted-foreground">{conv.lastMessage}</p>
               </div>
-              {conv.unread > 0 && <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[10px] font-semibold text-white">{conv.unread}</span>}
+              {(conv.unreadCount ?? conv.unread ?? 0) > 0 && <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[10px] font-semibold text-white">{conv.unreadCount ?? conv.unread}</span>}
             </button>
           ))}
         </div>
@@ -115,9 +139,9 @@ export function MessagesPage() {
       {/* Chat window */}
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-3 border-b border-border p-4">
-          <Avatar src={active.lawyerAvatarUrl} name={active.lawyerName} size="sm" online={active.online} />
+          <Avatar src={active.lawyerAvatarUrl ?? active.partnerAvatarUrl} name={active.lawyerName ?? active.partnerName ?? ""} size="sm" online={active.online} />
           <div>
-            <p className="text-sm font-semibold text-foreground">{active.lawyerName}</p>
+            <p className="text-sm font-semibold text-foreground">{active.lawyerName ?? active.partnerName ?? ""}</p>
             <p className="text-xs text-muted-foreground">{active.online ? "Online" : "Offline"}</p>
           </div>
         </div>
@@ -202,3 +226,5 @@ export function MessagesPage() {
     </div>
   );
 }
+
+export default MessagesPage;

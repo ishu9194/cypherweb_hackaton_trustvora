@@ -1,43 +1,41 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { User, UserRole } from "@/types";
 import { authService } from "@/services/api/auth.service";
-import { STORAGE_KEYS } from "@/constants/app.constants";
-
-/**
- * Fixed demo personas used only by the dev role switcher (bottom-right
- * floating widget). These are separate from the mock login flow in
- * auth.service.ts, which generates its own users from whatever email
- * the person types into the login form.
- */
-export const DEV_PERSONAS: Record<UserRole, User> = {
-  client: { id: "dev-client", name: "Sarah Jenkins", email: "sarah@client.com", role: "client", avatarUrl: "https://i.pravatar.cc/80?img=32" },
-  lawyer: { id: "dev-lawyer", name: "Elena Rostova, Esq.", email: "elena@lawyer.com", role: "lawyer", avatarUrl: "https://i.pravatar.cc/80?img=44" },
-  admin: { id: "dev-admin", name: "System Administrator", email: "admin@trustix.com", role: "admin", avatarUrl: "https://i.pravatar.cc/80?img=68" },
-};
-
-export type DevPersonaKey = UserRole | "guest";
 
 interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string, role?: UserRole) => Promise<User>;
-  register: (name: string, email: string, role?: UserRole) => Promise<User>;
+  login: (email: string, password: string) => Promise<User>;
+  register: (name: string, email: string, password: string, role?: UserRole) => Promise<User>;
   logout: () => Promise<void>;
-  /** Dev-only: instantly swap the active session to a preset persona (or "guest" to sign out). */
-  switchPersona: (persona: DevPersonaKey) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => authService.getStoredUser());
-  const [isLoading, setIsLoading] = useState(false);
+  // Starts true: on mount we verify the stored token against /auth/me before
+  // trusting whatever was cached in localStorage.
+  const [isLoading, setIsLoading] = useState(true);
 
-  const login = async (email: string, password: string, role: UserRole = "client") => {
+  useEffect(() => {
+    let cancelled = false;
+    authService.fetchCurrentUser().then((freshUser) => {
+      if (!cancelled) {
+        setUser(freshUser);
+        setIsLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      const { user: loggedInUser } = await authService.login(email, password, role);
+      const { user: loggedInUser } = await authService.login(email, password);
       setUser(loggedInUser);
       return loggedInUser;
     } finally {
@@ -45,10 +43,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (name: string, email: string, role: UserRole = "client") => {
+  const register = async (name: string, email: string, password: string, role: UserRole = "client") => {
     setIsLoading(true);
     try {
-      const { user: newUser } = await authService.register(name, email, role);
+      const { user: newUser } = await authService.register(name, email, password, role);
       setUser(newUser);
       return newUser;
     } finally {
@@ -61,21 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  const switchPersona = (persona: DevPersonaKey) => {
-    if (persona === "guest") {
-      localStorage.removeItem(STORAGE_KEYS.authToken);
-      localStorage.removeItem(STORAGE_KEYS.authUser);
-      setUser(null);
-      return;
-    }
-    const nextUser = DEV_PERSONAS[persona];
-    localStorage.setItem(STORAGE_KEYS.authToken, `dev-token-${nextUser.id}`);
-    localStorage.setItem(STORAGE_KEYS.authUser, JSON.stringify(nextUser));
-    setUser(nextUser);
-  };
-
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isAuthenticated: !!user, isLoading, login, register, logout, switchPersona }),
+    () => ({ user, isAuthenticated: !!user, isLoading, login, register, logout }),
     [user, isLoading],
   );
 

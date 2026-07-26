@@ -1,15 +1,33 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Heart, ShieldCheck, Sparkles } from "lucide-react";
-import { TEAM_MEMBERS, COMPANY_TIMELINE, COMPANY_VALUES } from "@/data/team.data";
+const COMPANY_VALUES = [
+  { title: "Transparency First", description: "No hidden fees, no opaque billing. Prices and credentials are clear upfront." },
+  { title: "Rigorous Verification", description: "Every advocate's Bar Council status is independently verified before listing." },
+  { title: "Client Security", description: "All document transfers and chats use end-to-end encryption to protect privilege." },
+];
+
+const COMPANY_TIMELINE = [
+  { year: "2024", title: "Founded in Bengaluru", description: "Started with a vision to make legal counsel accessible and transparent." },
+  { year: "2025", title: "Expanded nationwide", description: "Onboarded advocates across 40+ major Indian cities and high courts." },
+  { year: "2026", title: "1 million clients served", description: "Crossed one million consultations booked, with a 99% satisfaction rate." },
+];
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { CountUp } from "@/components/common/CountUp";
+import { ErrorState } from "@/components/states/ErrorState";
 import { ROUTES } from "@/constants/routes.constants";
+import { contentService } from "@/services/api/content.service";
+import { useAsync } from "@/hooks/useAsync";
 
 const VALUE_ICONS = [Sparkles, ShieldCheck, Heart];
 
 export function AboutUsPage() {
+  const { data: teamMembers, isLoading, error, refetch } = useAsync(() => contentService.getTeamMembers(), []);
+  const membersList = teamMembers ?? [];
+
+  if (error) return <ErrorState description={error} onRetry={refetch} />;
+
   return (
     <div className="pb-24">
       <section className="relative overflow-hidden pb-20 pt-16 sm:pt-24">
@@ -120,23 +138,27 @@ export function AboutUsPage() {
           <span className="text-xs font-semibold uppercase tracking-wider text-brand-600">Meet the team</span>
           <h2 className="mt-3 font-display text-3xl font-bold text-foreground">The people building Trustix</h2>
         </div>
-        <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {TEAM_MEMBERS.map((member, i) => (
-            <motion.div
-              key={member.name}
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-40px" }}
-              transition={{ delay: (i % 3) * 0.08 }}
-              className="card-lift rounded-2xl border border-border bg-surface p-6 text-center"
-            >
-              <Avatar src={member.avatarUrl} name={member.name} size="xl" className="mx-auto" />
-              <h3 className="mt-4 font-display text-base font-semibold text-foreground">{member.name}</h3>
-              <p className="text-xs font-medium text-brand-600">{member.role}</p>
-              <p className="mt-2 text-sm text-muted-foreground">{member.bio}</p>
-            </motion.div>
-          ))}
-        </div>
+        {isLoading ? (
+          <p className="mt-12 text-center text-sm text-muted-foreground">Loading team profile details…</p>
+        ) : (
+          <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {membersList.map((member, i) => (
+              <motion.div
+                key={member.name}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ delay: (i % 3) * 0.08 }}
+                className="card-lift rounded-2xl border border-border bg-surface p-6 text-center"
+              >
+                <Avatar src={member.avatarUrl} name={member.name} size="xl" className="mx-auto" />
+                <h3 className="mt-4 font-display text-base font-semibold text-foreground">{member.name}</h3>
+                <p className="text-xs font-medium text-brand-600">{member.role}</p>
+                <p className="mt-2 text-sm text-muted-foreground">{member.bio}</p>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
@@ -159,3 +181,5 @@ export function AboutUsPage() {
     </div>
   );
 }
+
+export default AboutUsPage;

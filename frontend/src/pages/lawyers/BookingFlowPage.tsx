@@ -1,12 +1,12 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
-import { LAWYERS } from "@/data/lawyers.data";
-import type { ConsultationType } from "@/types";
+import type { ConsultationType, Lawyer } from "@/types";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { Loader } from "@/components/ui/loader";
 import { toast } from "@/components/ui/toaster";
 import { BookingStepper } from "@/components/booking/BookingStepper";
 import { ConsultationTypeStep } from "@/components/booking/steps/ConsultationTypeStep";
@@ -17,6 +17,7 @@ import { DocumentUploadStep, type UploadedDoc } from "@/components/booking/steps
 import { PaymentSummaryStep } from "@/components/booking/steps/PaymentSummaryStep";
 import { useAuth } from "@/context/AuthContext";
 import { appointmentsService } from "@/services/api/appointments.service";
+import { lawyersService } from "@/services/api/lawyers.service";
 import { ROUTES } from "@/constants/routes.constants";
 import { formatCurrency } from "@/lib/utils";
 
@@ -33,14 +34,43 @@ export function BookingFlowPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const lawyer = LAWYERS.find((l) => l.id === id);
+
+  const [lawyer, setLawyer] = useState<Lawyer | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    if (!id) {
+      setNotFound(true);
+      setIsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setIsLoading(true);
+    setNotFound(false);
+    lawyersService.getById(id).then((res) => {
+      if (cancelled) return;
+      if (res) {
+        setLawyer(res);
+      } else {
+        setNotFound(true);
+      }
+      setIsLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   const [step, setStep] = useState(1);
   const [consultationType, setConsultationType] = useState<ConsultationType | null>(null);
   const [date, setDate] = useState<Date>();
   const [time, setTime] = useState<string | null>(null);
   const [clientDetails, setClientDetails] = useState<ClientDetailsValues>({
-    name: user?.name ?? "", email: user?.email ?? "", phone: "", notes: "",
+    name: user?.name ?? "",
+    email: user?.email ?? "",
+    phone: "",
+    notes: "",
   });
   const [files, setFiles] = useState<UploadedDoc[]>([]);
   const [paymentMethod, setPaymentMethod] = useState("upi");
@@ -49,14 +79,19 @@ export function BookingFlowPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const clientDetailsRef = useRef<ClientDetailsStepHandle>(null);
 
-  if (!lawyer) return <Navigate to={ROUTES.notFound} replace />;
+  if (notFound) return <Navigate to={ROUTES.notFound} replace />;
+  if (isLoading || !lawyer) return <Loader fullPage label="Loading booking details…" />;
 
   const canProceed = () => {
     switch (step) {
-      case 1: return consultationType !== null;
-      case 2: return date !== undefined;
-      case 3: return time !== null;
-      default: return true;
+      case 1:
+        return consultationType !== null;
+      case 2:
+        return date !== undefined;
+      case 3:
+        return time !== null;
+      default:
+        return true;
     }
   };
 
@@ -194,3 +229,5 @@ export function BookingFlowPage() {
     </div>
   );
 }
+
+export default BookingFlowPage;

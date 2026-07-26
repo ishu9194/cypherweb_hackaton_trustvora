@@ -36,6 +36,7 @@ export interface Lawyer {
   casesWon: number;
   successRate: number;
   joinedAt: string; // ISO
+  reviews?: Review[];
 }
 
 export interface PracticeArea {

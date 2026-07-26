@@ -1,11 +1,34 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import { LAWYERS } from "@/data/lawyers.data";
+import type { Lawyer } from "@/types";
+import { lawyersService } from "@/services/api/lawyers.service";
 import { LawyerCard } from "@/components/lawyers/LawyerCard";
+import { LawyerCardSkeleton } from "@/components/lawyers/LawyerCardSkeleton";
 import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/constants/routes.constants";
 
 export function FeaturedLawyersSection() {
+  const [lawyers, setLawyers] = useState<Lawyer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    lawyersService.list({ pageSize: 6 }).then((res) => {
+      if (cancelled) return;
+      setLawyers(res.lawyers || []);
+      setIsLoading(false);
+    }).catch(() => {
+      if (!cancelled) {
+        setLawyers([]);
+        setIsLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <section className="bg-surface-sunken py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -24,11 +47,23 @@ export function FeaturedLawyersSection() {
           </Button>
         </div>
 
-        <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {LAWYERS.slice(0, 6).map((lawyer) => (
-            <LawyerCard key={lawyer.id} lawyer={lawyer} />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <LawyerCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : lawyers.length === 0 ? (
+          <div className="mt-10 rounded-2xl border border-dashed border-border bg-surface p-8 text-center text-sm text-muted-foreground">
+            No lawyers available at the moment.
+          </div>
+        ) : (
+          <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {lawyers.map((lawyer) => (
+              <LawyerCard key={lawyer.id} lawyer={lawyer} />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

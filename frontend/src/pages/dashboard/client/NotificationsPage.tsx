@@ -1,13 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bell, Calendar, CreditCard, MessageSquare, Trash2, Briefcase, Settings as SettingsIcon } from "lucide-react";
-import { DASHBOARD_NOTIFICATIONS, type DashboardNotification } from "@/data/dashboardExtras.data";
+import type { DashboardNotification } from "@/services/api/dashboard.service";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
 import { Pagination } from "@/components/ui/pagination";
 import { EmptyState } from "@/components/states/EmptyState";
+import { ErrorState } from "@/components/states/ErrorState";
 import { toast } from "@/components/ui/toaster";
 import { formatDate, cn } from "@/lib/utils";
+import { dashboardService } from "@/services/api/dashboard.service";
+import { useAsync } from "@/hooks/useAsync";
 
 const ICONS: Record<DashboardNotification["category"], typeof Bell> = {
   appointment: Calendar,
@@ -29,9 +32,14 @@ const FILTERS = [
 const PAGE_SIZE = 5;
 
 export function NotificationsPage() {
-  const [items, setItems] = useState(DASHBOARD_NOTIFICATIONS);
+  const { data: initialNotifications, isLoading, error, refetch } = useAsync(() => dashboardService.getNotifications(), []);
+  const [items, setItems] = useState<DashboardNotification[]>([]);
   const [filter, setFilter] = useState("all");
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    if (initialNotifications) setItems(initialNotifications);
+  }, [initialNotifications]);
 
   const filtered = filter === "all" ? items : items.filter((n) => n.category === filter);
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -56,12 +64,16 @@ export function NotificationsPage() {
     return groups;
   }, [pageItems]);
 
+  if (error) return <ErrorState description={error} onRetry={refetch} />;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-display text-xl font-bold text-foreground">Notifications</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{unreadCount} unread notification{unreadCount === 1 ? "" : "s"}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {isLoading ? "Loading notifications…" : `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Select options={FILTERS} value={filter} onValueChange={(v) => { setFilter(v); setPage(1); }} className="w-40" />
@@ -69,7 +81,9 @@ export function NotificationsPage() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">Loading notifications…</p>
+      ) : filtered.length === 0 ? (
         <EmptyState icon={<Bell className="h-5 w-5" />} title="No notifications" description="You're all caught up." />
       ) : (
         <div className="space-y-6">
@@ -109,3 +123,5 @@ export function NotificationsPage() {
     </div>
   );
 }
+
+export default NotificationsPage;

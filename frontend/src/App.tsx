@@ -6,7 +6,6 @@ import { AuthProvider } from "@/context/AuthContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Loader } from "@/components/ui/loader";
-import { DevRoleSwitcher } from "@/components/dev/DevRoleSwitcher";
 
 import { MainLayout } from "@/layouts/MainLayout";
 import { AuthLayout } from "@/layouts/AuthLayout";
@@ -68,8 +67,8 @@ const ServerErrorPage = lazy(() => import("@/pages/errors/ServerErrorPage").then
 const MaintenancePage = lazy(() => import("@/pages/errors/MaintenancePage").then((m) => ({ default: m.MaintenancePage })));
 const FindLawyersPage = lazy(() => import("@/pages/lawyers/FindLawyersPage").then((m) => ({ default: m.FindLawyersPage })));
 const LawyerProfilePage = lazy(() => import("@/pages/lawyers/LawyerProfilePage").then((m) => ({ default: m.LawyerProfilePage })));
-const BookingFlowPage = lazy(() => import("@/pages/lawyers/BookingFlowPage").then((m) => ({ default: m.BookingFlowPage })));
-const BookingSuccessPage = lazy(() => import("@/pages/lawyers/BookingSuccessPage").then((m) => ({ default: m.BookingSuccessPage })));
+const BookingFlowPage = lazy(() => import("@/pages/lawyers/BookingFlowPage").then((m) => ({ default: m.default || m.BookingFlowPage })));
+const BookingSuccessPage = lazy(() => import("@/pages/lawyers/BookingSuccessPage").then((m) => ({ default: m.default || m.BookingSuccessPage })));
 
 function AppRoutes() {
   return (
@@ -87,8 +86,10 @@ function AppRoutes() {
         <Route path={ROUTES.privacyPolicy} element={<PrivacyPolicyPage />} />
         <Route path={ROUTES.termsConditions} element={<TermsConditionsPage />} />
         <Route path={ROUTES.lawyerProfile()} element={<LawyerProfilePage />} />
-        <Route path={ROUTES.bookLawyer()} element={<BookingFlowPage />} />
         <Route path={ROUTES.bookingSuccess} element={<BookingSuccessPage />} />
+        <Route path={ROUTES.bookLawyer()} element={<BookingFlowPage />} />
+        <Route path="/book/:id" element={<BookingFlowPage />} />
+        <Route path="/lawyers/:id/book" element={<BookingFlowPage />} />
         <Route path={ROUTES.styleGuide} element={<StyleGuidePage />} />
       </Route>
 
@@ -187,7 +188,6 @@ function App() {
               </AnimatePresence>
             </Suspense>
             <Toaster />
-            <DevRoleSwitcher />
           </TooltipProvider>
         </AuthProvider>
       </ThemeProvider>
