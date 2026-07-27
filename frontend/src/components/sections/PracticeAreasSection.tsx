@@ -53,9 +53,10 @@ export function PracticeAreasSection() {
                   {new Intl.NumberFormat("en-IN").format(area.casesServed)}+ cases
                 </span>
                 <Link
-                  to={`${ROUTES.practiceAreas}?area=${area.id}`}
+                  to={`${ROUTES.findLawyers}?area=${encodeURIComponent(area.name)}`}
                   className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 transition-transform group-hover:translate-x-0.5"
                 >
+
                   Explore <ArrowUpRight className="h-3.5 w-3.5" />
                 </Link>
               </div>

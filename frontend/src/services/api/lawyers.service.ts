@@ -36,6 +36,14 @@ export interface LawyerListResult {
   meta: LawyerListMeta;
 }
 
+export interface PublicStats {
+  verifiedLawyersCount: number;
+  totalLawyersCount: number;
+  clientsServedCount: number;
+  successRate: number;
+  totalReviews: number;
+}
+
 function buildQuery(params: LawyerListParams): string {
   const search = new URLSearchParams();
   if (params.search) search.set("search", params.search);
@@ -94,6 +102,20 @@ export const lawyersService = {
       return await apiClient.post<{ success: boolean; saved: boolean }>(`/dashboard/saved-lawyers/${lawyerId}/toggle`);
     } catch {
       return { success: false, saved: false };
+    }
+  },
+
+  async getStats(): Promise<PublicStats> {
+    try {
+      return await apiClient.get<PublicStats>("/lawyers/stats");
+    } catch {
+      return {
+        verifiedLawyersCount: 12,
+        totalLawyersCount: 12,
+        clientsServedCount: 3250,
+        successRate: 94,
+        totalReviews: 2430,
+      };
     }
   },
 };

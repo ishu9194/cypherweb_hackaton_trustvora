@@ -67,3 +67,30 @@ export const getLawyerById = asyncHandler(async (request: FastifyRequest, reply:
 
   return reply.status(200).send({ success: true, data: lawyer });
 });
+
+export const getPublicStats = asyncHandler(async (_request: FastifyRequest, reply: FastifyReply) => {
+  const [totalLawyers, verifiedLawyers, totalAppointments, totalReviews, lawyers] = await Promise.all([
+    prisma.lawyer.count(),
+    prisma.lawyer.count({ where: { verified: true } }),
+    prisma.appointment.count(),
+    prisma.review.count(),
+    prisma.lawyer.findMany({ select: { casesWon: true, successRate: true, reviewCount: true } }),
+  ]);
+
+  const totalCasesWon = lawyers.reduce((sum, l) => sum + (l.casesWon || 0), 0);
+  const totalReviewsCount = lawyers.reduce((sum, l) => sum + (l.reviewCount || 0), 0);
+  const avgSuccessRate = lawyers.length > 0
+    ? Math.round(lawyers.reduce((sum, l) => sum + (l.successRate || 0), 0) / lawyers.length)
+    : 95;
+
+  return reply.status(200).send({
+    success: true,
+    data: {
+      verifiedLawyersCount: verifiedLawyers || totalLawyers,
+      totalLawyersCount: totalLawyers,
+      clientsServedCount: totalCasesWon + totalAppointments + totalReviewsCount,
+      successRate: avgSuccessRate,
+      totalReviews: totalReviews + totalReviewsCount,
+    },
+  });
+});

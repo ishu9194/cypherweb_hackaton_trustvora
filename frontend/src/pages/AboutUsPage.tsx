@@ -22,9 +22,25 @@ import { useAsync } from "@/hooks/useAsync";
 
 const VALUE_ICONS = [Sparkles, ShieldCheck, Heart];
 
+import { useEffect, useState } from "react";
+import { lawyersService, type PublicStats } from "@/services/api/lawyers.service";
+
 export function AboutUsPage() {
   const { data: teamMembers, isLoading, error, refetch } = useAsync(() => contentService.getTeamMembers(), []);
   const membersList = teamMembers ?? [];
+  const [statsData, setStatsData] = useState<PublicStats>({
+    verifiedLawyersCount: 12,
+    totalLawyersCount: 12,
+    clientsServedCount: 3250,
+    successRate: 94,
+    totalReviews: 2430,
+  });
+
+  useEffect(() => {
+    lawyersService.getStats().then((data) => {
+      if (data) setStatsData(data);
+    }).catch(() => {});
+  }, []);
 
   if (error) return <ErrorState description={error} onRetry={refetch} />;
 
@@ -38,25 +54,24 @@ export function AboutUsPage() {
             animate={{ opacity: 1, y: 0 }}
             className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/80 px-3.5 py-1.5 text-xs font-medium text-muted-foreground shadow-soft backdrop-blur"
           >
-            <Sparkles className="h-3.5 w-3.5 text-accent-500" /> Our story
+            <Sparkles className="h-3.5 w-3.5 text-accent-500" />
+            Our Story & Mission
           </motion.span>
           <motion.h1
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="mt-5 font-display text-4xl font-bold tracking-tight text-foreground sm:text-5xl"
+            transition={{ delay: 0.08 }}
+            className="mt-6 font-display text-4xl font-bold tracking-tight text-foreground sm:text-5xl"
           >
-            Legal help shouldn't feel like a <span className="text-gradient-brand">legal problem</span>
+            Reimagining how India connects with legal counsel.
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="mx-auto mt-5 max-w-xl text-base text-muted-foreground sm:text-lg"
+            transition={{ delay: 0.16 }}
+            className="mt-6 text-lg text-muted-foreground"
           >
-            We started Trustix because finding a lawyer you can trust took too long, cost too
-            much to figure out, and rarely came with a straight answer. Four years later, we're
-            still solving that — at a much bigger scale.
+            Trustix was built to eliminate opacity, high consultation barriers, and uncertainty when seeking legal help.
           </motion.p>
         </div>
       </section>
@@ -64,10 +79,10 @@ export function AboutUsPage() {
       <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-4 rounded-2xl border border-border bg-surface p-6 shadow-soft sm:grid-cols-4 sm:p-10">
           {[
-            { value: 100000, suffix: "+", label: "Verified Lawyers" },
-            { value: 1000000, suffix: "+", label: "Clients Served" },
-            { value: 200, suffix: "+", label: "Cities Covered" },
-            { value: 99, suffix: "%", label: "Satisfaction Rate" },
+            { value: statsData.verifiedLawyersCount, suffix: "+", label: "Verified Lawyers" },
+            { value: statsData.clientsServedCount, suffix: "+", label: "Clients Served" },
+            { value: 40, suffix: "+", label: "Cities Covered" },
+            { value: statsData.successRate, suffix: "%", label: "Satisfaction Rate" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <p className="font-display text-2xl font-bold text-foreground sm:text-3xl"><CountUp value={stat.value} suffix={stat.suffix} /></p>

@@ -21,6 +21,8 @@ const HomePage = lazy(() => import("@/pages/HomePage").then((m) => ({ default: m
 const StyleGuidePage = lazy(() => import("@/pages/StyleGuidePage").then((m) => ({ default: m.StyleGuidePage })));
 const ComingSoonPage = lazy(() => import("@/pages/ComingSoonPage").then((m) => ({ default: m.ComingSoonPage })));
 const AboutUsPage = lazy(() => import("@/pages/AboutUsPage").then((m) => ({ default: m.AboutUsPage })));
+const PracticeAreasPage = lazy(() => import("@/pages/PracticeAreasPage").then((m) => ({ default: m.PracticeAreasPage })));
+
 const ServicesPage = lazy(() => import("@/pages/ServicesPage").then((m) => ({ default: m.ServicesPage })));
 const BlogPage = lazy(() => import("@/pages/BlogPage").then((m) => ({ default: m.BlogPage })));
 const ContactPage = lazy(() => import("@/pages/ContactPage").then((m) => ({ default: m.ContactPage })));
@@ -77,7 +79,8 @@ function AppRoutes() {
       <Route element={<MainLayout />}>
         <Route path={ROUTES.home} element={<HomePage />} />
         <Route path={ROUTES.findLawyers} element={<FindLawyersPage />} />
-        <Route path={ROUTES.practiceAreas} element={<ComingSoonPage title="Practice Areas — coming soon" description="A dedicated directory of all 20 practice areas is on the way." />} />
+        <Route path={ROUTES.practiceAreas} element={<PracticeAreasPage />} />
+
         <Route path={ROUTES.services} element={<ServicesPage />} />
         <Route path={ROUTES.pricing} element={<ComingSoonPage title="Pricing — coming soon" description="Transparent plan comparisons are being finalized." />} />
         <Route path={ROUTES.blog} element={<BlogPage />} />
