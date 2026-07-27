@@ -22,8 +22,12 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to={ROUTES.login} state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return <Navigate to={ROUTES.forbidden} replace />;
+  if (allowedRoles && user) {
+    const userRoleLower = user.role.toLowerCase();
+    const allowedLower = allowedRoles.map((r) => r.toLowerCase());
+    if (!allowedLower.includes(userRoleLower)) {
+      return <Navigate to={ROUTES.forbidden} replace />;
+    }
   }
 
   return <>{children}</>;

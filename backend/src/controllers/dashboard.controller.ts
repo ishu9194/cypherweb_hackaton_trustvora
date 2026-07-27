@@ -115,11 +115,10 @@ export const toggleSaveLawyer = asyncHandler(async (req: FastifyRequest, reply: 
   const { sub } = req.user as { sub: string };
   const { id: lawyerId } = req.params as { id: string };
 
-  const existing = await prisma.savedLawyer.findUnique({
-    where: {
-      userId_lawyerId: { userId: sub, lawyerId },
-    },
+  const existing = await prisma.savedLawyer.findFirst({
+    where: { userId: sub, lawyerId },
   });
+
 
   if (existing) {
     await prisma.savedLawyer.delete({

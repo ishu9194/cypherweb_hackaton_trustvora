@@ -2,7 +2,7 @@ import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import jwt from "@fastify/jwt";
-import dotenv from "dotenv";
+import { config } from "./config.js";
 import { apiRoutes } from "./routes/api.js";
 import { authRoutes } from "./routes/auth.routes.js";
 import { lawyersRoutes } from "./routes/lawyers.routes.js";
@@ -14,9 +14,6 @@ import { lawyerDashboardRoutes } from "./routes/lawyerDashboard.routes.js";
 import { contentRoutes } from "./routes/content.routes.js";
 
 import { setupSocketIO } from "./socket.js";
-
-
-dotenv.config();
 
 const fastify = Fastify({
   logger: true,
@@ -31,8 +28,9 @@ await fastify.register(cors, {
 
 // JWT auth
 await fastify.register(jwt, {
-  secret: process.env.JWT_SECRET || "dev-only-change-me-before-deploying",
+  secret: config.jwtSecret,
 });
+
 
 fastify.decorate("authenticate", async (request: FastifyRequest, reply: FastifyReply) => {
   try {
@@ -41,6 +39,19 @@ fastify.decorate("authenticate", async (request: FastifyRequest, reply: FastifyR
     return reply.status(401).send({ success: false, message: "Missing or invalid authentication token" });
   }
 });
+
+fastify.decorate("authorizeAdmin", async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    await request.jwtVerify();
+    const user = request.user as { role?: string };
+    if (user?.role?.toUpperCase() !== "ADMIN") {
+      return reply.status(403).send({ success: false, message: "Admin access required" });
+    }
+  } catch {
+    return reply.status(401).send({ success: false, message: "Missing or invalid authentication token" });
+  }
+});
+
 
 // Global error handler
 fastify.setErrorHandler((error: any, request, reply) => {
@@ -77,8 +88,9 @@ setupSocketIO(fastify);
 const start = async () => {
 
   try {
-    const port = Number(process.env.PORT) || 3000;
+    const port = config.port;
     await fastify.listen({ port, host: "0.0.0.0" });
+
     console.log(`🚀 Trustix Server live at http://localhost:${port}`);
   } catch (err) {
     fastify.log.error(err);

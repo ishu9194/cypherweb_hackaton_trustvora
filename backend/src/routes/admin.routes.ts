@@ -20,7 +20,8 @@ import {
 } from "../controllers/admin.controller.js";
 
 export async function adminRoutes(fastify: FastifyInstance) {
-  const authOpt = { onRequest: [fastify.authenticate] };
+  const authOpt = { onRequest: [(fastify as any).authorizeAdmin || fastify.authenticate] };
+
 
   fastify.get("/stats", authOpt, getStats);
   fastify.get("/revenue", authOpt, getRevenue);

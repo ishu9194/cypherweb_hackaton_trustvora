@@ -12,6 +12,8 @@ import { ROUTES } from "@/constants/routes.constants";
 import { formatCurrency, cn } from "@/lib/utils";
 import { MAX_COMPARE, useCompareStore } from "@/hooks/useCompareStore";
 import { useFavoritesStore } from "@/hooks/useFavoritesStore";
+import { lawyersService } from "@/services/api/lawyers.service";
+
 
 interface LawyerCardProps {
   lawyer: Lawyer;
@@ -27,8 +29,13 @@ export function LawyerCard({ lawyer, className }: LawyerCardProps) {
   const favorited = isFavorited(lawyer.id);
   const compared = isCompared(lawyer.id);
 
-  const handleToggleFavorite = () => {
+  const handleToggleFavorite = async () => {
     toggleFavorite(lawyer.id);
+    try {
+      await lawyersService.toggleSaveLawyer(lawyer.id);
+    } catch {
+      // Fall back to local store
+    }
     toast.success(favorited ? `Removed ${lawyer.name} from favorites` : `Added ${lawyer.name} to favorites`);
   };
 
@@ -46,6 +53,11 @@ export function LawyerCard({ lawyer, className }: LawyerCardProps) {
     toast.success("Profile link copied to clipboard");
     setTimeout(() => setShared(false), 1500);
   };
+
+  const handleChatNow = () => {
+    navigate(`${ROUTES.clientMessages}?lawyerId=${lawyer.id}&lawyerName=${encodeURIComponent(lawyer.name)}`);
+  };
+
 
   return (
     <motion.div
@@ -139,7 +151,8 @@ export function LawyerCard({ lawyer, className }: LawyerCardProps) {
             variant="ghost"
             aria-label="Chat"
             className="flex-1"
-            onClick={() => toast.success(`Starting a chat with ${lawyer.name}`)}
+            onClick={handleChatNow}
+
           >
             <MessageCircle className="h-4 w-4" />
           </Button>

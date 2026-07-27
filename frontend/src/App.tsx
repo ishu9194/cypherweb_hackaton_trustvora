@@ -16,12 +16,15 @@ import { PublicRoute } from "@/routes/PublicRoute";
 
 import { ROUTES } from "@/constants/routes.constants";
 
-// Route-level code splitting: each page ships as its own chunk, fetched on demand.
 const HomePage = lazy(() => import("@/pages/HomePage").then((m) => ({ default: m.HomePage })));
 const StyleGuidePage = lazy(() => import("@/pages/StyleGuidePage").then((m) => ({ default: m.StyleGuidePage })));
-const ComingSoonPage = lazy(() => import("@/pages/ComingSoonPage").then((m) => ({ default: m.ComingSoonPage })));
+
 const AboutUsPage = lazy(() => import("@/pages/AboutUsPage").then((m) => ({ default: m.AboutUsPage })));
+
+
 const PracticeAreasPage = lazy(() => import("@/pages/PracticeAreasPage").then((m) => ({ default: m.PracticeAreasPage })));
+const PricingPage = lazy(() => import("@/pages/PricingPage").then((m) => ({ default: m.PricingPage })));
+
 
 const ServicesPage = lazy(() => import("@/pages/ServicesPage").then((m) => ({ default: m.ServicesPage })));
 const BlogPage = lazy(() => import("@/pages/BlogPage").then((m) => ({ default: m.BlogPage })));
@@ -82,7 +85,8 @@ function AppRoutes() {
         <Route path={ROUTES.practiceAreas} element={<PracticeAreasPage />} />
 
         <Route path={ROUTES.services} element={<ServicesPage />} />
-        <Route path={ROUTES.pricing} element={<ComingSoonPage title="Pricing — coming soon" description="Transparent plan comparisons are being finalized." />} />
+        <Route path={ROUTES.pricing} element={<PricingPage />} />
+
         <Route path={ROUTES.blog} element={<BlogPage />} />
         <Route path={ROUTES.about} element={<AboutUsPage />} />
         <Route path={ROUTES.contact} element={<ContactPage />} />

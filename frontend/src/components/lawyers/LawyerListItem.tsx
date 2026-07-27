@@ -7,10 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/toaster";
-import { ROUTES } from "@/constants/routes.constants";
 import { formatCurrency, cn } from "@/lib/utils";
 import { MAX_COMPARE, useCompareStore } from "@/hooks/useCompareStore";
 import { useFavoritesStore } from "@/hooks/useFavoritesStore";
+import { ROUTES } from "@/constants/routes.constants";
+import { lawyersService } from "@/services/api/lawyers.service";
+
+
+
 
 export function LawyerListItem({ lawyer, className }: { lawyer: Lawyer; className?: string }) {
   const navigate = useNavigate();
@@ -59,7 +63,20 @@ export function LawyerListItem({ lawyer, className }: { lawyer: Lawyer; classNam
         </div>
         <div className="flex items-center gap-1.5">
           <Tooltip content={favorited ? "Remove favorite" : "Add to favorites"}>
-            <Button size="icon" variant="ghost" aria-label="Favorite" onClick={() => { toggleFavorite(lawyer.id); toast.success(favorited ? "Removed from favorites" : "Added to favorites"); }}>
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label="Favorite"
+              onClick={async () => {
+                toggleFavorite(lawyer.id);
+                try {
+                  await lawyersService.toggleSaveLawyer(lawyer.id);
+                } catch {
+                  // Fall back
+                }
+                toast.success(favorited ? "Removed from favorites" : "Added to favorites");
+              }}
+            >
               <Heart className={cn("h-4 w-4", favorited && "fill-danger text-danger")} />
             </Button>
           </Tooltip>
@@ -79,10 +96,16 @@ export function LawyerListItem({ lawyer, className }: { lawyer: Lawyer; classNam
             </Button>
           </Tooltip>
           <Tooltip content="Chat now">
-            <Button size="icon" variant="ghost" aria-label="Chat" onClick={() => toast.success(`Starting a chat with ${lawyer.name}`)}>
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label="Chat"
+              onClick={() => navigate(`/dashboard/messages?lawyerId=${lawyer.id}&lawyerName=${encodeURIComponent(lawyer.name)}`)}
+            >
               <MessageCircle className="h-4 w-4" />
             </Button>
           </Tooltip>
+
           <Tooltip content="Share profile">
             <Button size="icon" variant="ghost" aria-label="Share" onClick={() => toast.success("Profile link copied to clipboard")}>
               <Share2 className="h-4 w-4" />

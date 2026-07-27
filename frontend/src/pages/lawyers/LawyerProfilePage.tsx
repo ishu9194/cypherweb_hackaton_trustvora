@@ -128,10 +128,24 @@ export function LawyerProfilePage() {
 
             <div className="flex gap-2">
               <Tooltip content={favorited ? "Remove from saved" : "Save profile"}>
-                <Button variant="outline" size="icon" className="border-white/25 text-white hover:bg-white/10" onClick={() => { toggleFavorite(lawyer.id); toast.success(favorited ? "Removed from saved" : "Profile saved"); }}>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="border-white/25 text-white hover:bg-white/10"
+                  onClick={async () => {
+                    toggleFavorite(lawyer.id);
+                    try {
+                      await lawyersService.toggleSaveLawyer(lawyer.id);
+                    } catch {
+                      // Fallback
+                    }
+                    toast.success(favorited ? "Removed from saved" : "Profile saved");
+                  }}
+                >
                   <Heart className={favorited ? "h-4 w-4 fill-danger text-danger" : "h-4 w-4"} />
                 </Button>
               </Tooltip>
+
               <Tooltip content="Share profile">
                 <Button variant="outline" size="icon" className="border-white/25 text-white hover:bg-white/10" onClick={() => toast.success("Profile link copied to clipboard")}>
                   <Share2 className="h-4 w-4" />

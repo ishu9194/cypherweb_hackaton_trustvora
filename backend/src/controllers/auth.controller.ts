@@ -22,10 +22,39 @@ export const register = asyncHandler(async (request: FastifyRequest, reply: Fast
     data: { name: body.name, email: body.email, passwordHash, role: body.role as any },
   });
 
+  if (body.role === "LAWYER") {
+    await prisma.lawyer.create({
+      data: {
+        userId: user.id,
+        name: body.name,
+        avatarUrl: `https://i.pravatar.cc/160?img=${(user.id.charCodeAt(0) % 70) + 1}`,
+        verified: false,
+        online: true,
+        gender: "other",
+        experienceYears: 1,
+        qualification: "Advocate (Bar Council)",
+        court: "District Court",
+        languages: ["English", "Hindi"],
+        specializations: ["General Practice"],
+        rating: 5.0,
+        reviewCount: 0,
+        consultationFee: 1000,
+        consultationTypes: ["video", "voice", "chat"],
+        responseTimeMinutes: 15,
+        city: "Mumbai",
+        state: "Maharashtra",
+        bio: "Independent legal advocate specializing in general consultation.",
+        casesWon: 0,
+        successRate: 100,
+      },
+    });
+  }
+
   const token = await reply.jwtSign({ sub: user.id, role: user.role }, { expiresIn: "7d" });
 
   return reply.status(201).send({ success: true, data: { user: toPublicUser(user), token } });
 });
+
 
 export const login = asyncHandler(async (request: FastifyRequest, reply: FastifyReply) => {
   const body = LoginSchema.parse(request.body);

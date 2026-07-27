@@ -65,10 +65,13 @@ export function AdminOverviewPage() {
                       {statsLoading ? (
                         <span className="inline-block h-5 w-16 animate-pulse rounded bg-surface-sunken" />
                       ) : typeof (stat as { value: unknown }).value === "number" ? (
-                        formatCurrency((stat as { value: number }).value)
+                        (stat as { label: string }).label.toLowerCase().includes("revenue")
+                          ? formatCurrency((stat as { value: number }).value)
+                          : (stat as { value: number }).value.toLocaleString()
                       ) : (
                         (stat as { value: string }).value
                       )}
+
                     </p>
                     <p className="text-xs text-muted-foreground">{statsLoading ? "" : (stat as { label: string }).label}</p>
                   </div>

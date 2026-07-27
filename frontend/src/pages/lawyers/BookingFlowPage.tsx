@@ -147,9 +147,10 @@ export function BookingFlowPage() {
           documentCount: files.length,
         },
       });
-    } catch {
-      toast.error("Something went wrong confirming your booking. Please try again.");
+    } catch (err: any) {
+      toast.error(err?.message || "Something went wrong confirming your booking. Please try again.");
     } finally {
+
       setIsSubmitting(false);
     }
   };
