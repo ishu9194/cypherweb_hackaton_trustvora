@@ -14,14 +14,21 @@ import { dashboardService } from "@/services/api/dashboard.service";
 import { useAsync } from "@/hooks/useAsync";
 import type { Payment } from "@/types";
 
-const MONTHLY_SPEND = [
-  { month: "Feb", amount: 1200 },
-  { month: "Mar", amount: 2500 },
-  { month: "Apr", amount: 700 },
-  { month: "May", amount: 3200 },
-  { month: "Jun", amount: 1500 },
-  { month: "Jul", amount: 4000 },
-];
+function getMonthlySpend(payments: Payment[]) {
+  const months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul"];
+  const sums: Record<string, number> = { Feb: 0, Mar: 0, Apr: 0, May: 0, Jun: 0, Jul: 0 };
+  const paid = payments.filter((p) => p.status === "paid");
+  for (const p of paid) {
+    if (p.date) {
+      const monthStr = new Date(p.date).toLocaleString("en-US", { month: "short" });
+      if (sums[monthStr] !== undefined) {
+        sums[monthStr] += p.amount || 0;
+      }
+    }
+  }
+  return months.map((month) => ({ month, amount: sums[month] || 0 }));
+}
+
 
 const STATUS_VARIANT: Record<Payment["status"], "success" | "warning" | "neutral" | "danger"> = {
   paid: "success",
@@ -61,7 +68,8 @@ export function PaymentsPage() {
         <CardHeader><CardTitle>Monthly Spend</CardTitle></CardHeader>
         <CardContent className="h-56">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={MONTHLY_SPEND}>
+            <BarChart data={getMonthlySpend(paymentsList)}>
+
               <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
               <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} />
               <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} />

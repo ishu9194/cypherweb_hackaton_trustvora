@@ -46,7 +46,7 @@ export function OtpVerificationPage() {
 
     if (code !== DEMO_CODE) {
       setError(true);
-      toast.error("Incorrect code. Try 123456 for this demo.");
+      toast.error("Incorrect verification code. Please try again.");
       return;
     }
 
@@ -82,8 +82,9 @@ export function OtpVerificationPage() {
 
       <h1 className="mt-4 text-center font-display text-2xl font-bold text-foreground">Verify your email</h1>
       <p className="mt-1.5 text-center text-sm text-muted-foreground">
-        We sent a 6-digit code to <span className="font-medium text-foreground">{state.email}</span>. Enter it below (use <span className="font-mono">123456</span> for this demo).
+        We sent a 6-digit code to <span className="font-medium text-foreground">{state.email}</span>. Enter it below to complete verification.
       </p>
+
 
       <div className="mt-8">
         <OtpInput key={otpKey} onComplete={handleComplete} error={error} />

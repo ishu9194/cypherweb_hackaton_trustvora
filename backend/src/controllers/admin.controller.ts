@@ -1,6 +1,8 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler, HttpError } from "../utils/asyncHandler.js";
+import { emitTrustScoreUpdated } from "../socket.js";
+
 
 export const getStats = asyncHandler(async (_req: FastifyRequest, reply: FastifyReply) => {
   const [lawyerCount, clientCount, aggregateRevenue] = await Promise.all([
@@ -149,8 +151,11 @@ export const verifyLawyer = asyncHandler(async (req: FastifyRequest, reply: Fast
     data: { verified },
   });
 
+  emitTrustScoreUpdated(updated.id, updated.verified ? 950 : 500, updated.rating);
+
   return reply.send({ success: true, data: updated });
 });
+
 
 export const getPayments = asyncHandler(async (_req: FastifyRequest, reply: FastifyReply) => {
   const appointments = await prisma.appointment.findMany({

@@ -2,6 +2,8 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { prisma } from "../lib/prisma.js";
 import { CreateReviewSchema } from "../schemas/review.schema.js";
 import { asyncHandler, HttpError } from "../utils/asyncHandler.js";
+import { TrustEngineService } from "../services/trustEngine.js";
+import { emitNewReview, emitTrustScoreUpdated } from "../socket.js";
 
 export const createReview = asyncHandler(async (request: FastifyRequest, reply: FastifyReply) => {
   const { sub } = request.user;
@@ -14,31 +16,36 @@ export const createReview = asyncHandler(async (request: FastifyRequest, reply: 
   if (!user) throw new HttpError(404, "User not found");
   if (!lawyer) throw new HttpError(404, "Lawyer not found");
 
-  // A completed appointment with this lawyer marks the review as a verified client review.
-  const hasCompletedAppointment = await prisma.appointment.findFirst({
-    where: { clientId: sub, lawyerId: body.lawyerId, status: "completed" },
-    select: { id: true },
+  const appointment = await prisma.appointment.findFirst({
+    where: { clientId: sub, lawyerId: body.lawyerId },
+    select: { id: true, status: true },
   });
 
-  const newReviewCount = lawyer.reviewCount + 1;
-  const newRating = (lawyer.rating * lawyer.reviewCount + body.rating) / newReviewCount;
+  if (!appointment) {
+    throw new HttpError(403, "You must have a booked consultation with this lawyer to submit a review.");
+  }
 
-  const [review] = await prisma.$transaction([
-    prisma.review.create({
-      data: {
-        lawyerId: body.lawyerId,
-        authorId: sub,
-        authorName: user.name,
-        rating: body.rating,
-        comment: body.comment,
-        verifiedClient: Boolean(hasCompletedAppointment),
-      },
-    }),
-    prisma.lawyer.update({
-      where: { id: body.lawyerId },
-      data: { rating: newRating, reviewCount: newReviewCount },
-    }),
-  ]);
+  const isVerifiedClient = appointment.status === "completed";
+
+  const review = await prisma.review.create({
+    data: {
+      lawyerId: body.lawyerId,
+      authorId: sub,
+      authorName: user.name,
+      rating: body.rating,
+      comment: body.comment,
+      verifiedClient: isVerifiedClient,
+    },
+  });
+
+  // Invoke Trust Engine to recalculate lawyer trust score and rating metrics
+  const trustEngineResult = await TrustEngineService.recalculateLawyerTrustScore(body.lawyerId);
+
+  // Emit WebSocket real-time events
+  emitNewReview(review);
+  if (trustEngineResult) {
+    emitTrustScoreUpdated(body.lawyerId, trustEngineResult.trustScore, trustEngineResult.rating);
+  }
 
   return reply.status(201).send({ success: true, data: review });
 });

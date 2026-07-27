@@ -46,7 +46,7 @@ export function SocialLoginButtons() {
           variant="outline"
           className="px-0"
           aria-label={`Continue with ${provider.name}`}
-          onClick={() => toast(`${provider.name} sign-in is a UI preview in this demo`)}
+          onClick={() => toast(`${provider.name} sign-in is coming soon`)}
         >
           <provider.icon />
         </Button>

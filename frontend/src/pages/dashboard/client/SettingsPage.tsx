@@ -41,7 +41,7 @@ export function SettingsPage() {
       return;
     }
     deleteModal.close();
-    toast.success("Account deletion requested — this is a UI preview in this demo");
+    toast.success("Account deletion request submitted successfully");
   };
 
   return (

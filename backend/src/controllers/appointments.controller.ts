@@ -2,13 +2,8 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { prisma } from "../lib/prisma.js";
 import { CreateAppointmentSchema, UpdateAppointmentStatusSchema } from "../schemas/appointment.schema.js";
 import { asyncHandler, HttpError } from "../utils/asyncHandler.js";
+import { emitAppointmentStatusChanged, emitNewAppointment } from "../socket.js";
 
-/**
- * Appointments are scoped by the authenticated user, never by a query param —
- * a client only ever sees rows where they're the client, a lawyer only ever
- * sees rows where they're the lawyer. Resolves the caller's Lawyer.id when
- * role is LAWYER, since Appointment.lawyerId points at Lawyer.id, not User.id.
- */
 async function resolveScope(sub: string, role: "CLIENT" | "LAWYER" | "ADMIN") {
   if (role === "LAWYER") {
     const lawyer = await prisma.lawyer.findUnique({ where: { userId: sub }, select: { id: true } });
@@ -49,18 +44,40 @@ export const createAppointment = asyncHandler(async (request: FastifyRequest, re
     throw new HttpError(404, "Lawyer not found");
   }
 
-  const appointment = await prisma.appointment.create({
-    data: {
-      clientId: sub,
-      clientName: user.name,
-      lawyerId: body.lawyerId,
-      lawyerName: body.lawyerName,
-      lawyerAvatarUrl: body.lawyerAvatarUrl,
-      date: new Date(body.date),
-      type: body.type,
-      fee: body.fee,
-    },
+  // Normalize date to minute boundary for timezone consistency
+  const bookingDate = new Date(body.date);
+  bookingDate.setSeconds(0, 0);
+
+  // Concurrency guard via interactive Prisma transaction against double booking
+  const appointment = await prisma.$transaction(async (tx) => {
+    const existing = await tx.appointment.findFirst({
+      where: {
+        lawyerId: body.lawyerId,
+        date: bookingDate,
+        status: { in: ["pending", "upcoming", "completed"] },
+      },
+    });
+
+    if (existing) {
+      throw new HttpError(409, "This lawyer already has an active consultation booked at the selected date and time.");
+    }
+
+    return await tx.appointment.create({
+      data: {
+        clientId: sub,
+        clientName: user.name,
+        lawyerId: body.lawyerId,
+        lawyerName: body.lawyerName,
+        lawyerAvatarUrl: body.lawyerAvatarUrl,
+        date: bookingDate,
+        type: body.type,
+        fee: body.fee,
+      },
+    });
   });
+
+  // Real-Time Socket event emission
+  emitNewAppointment(appointment);
 
   return reply.status(201).send({ success: true, data: appointment });
 });
@@ -86,6 +103,9 @@ export const updateAppointmentStatus = asyncHandler(async (request: FastifyReque
     where: { id },
     data: { status },
   });
+
+  // Real-Time Socket status change emission
+  emitAppointmentStatusChanged(updated);
 
   return reply.status(200).send({ success: true, data: updated });
 });

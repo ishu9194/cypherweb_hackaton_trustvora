@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts";
 import { Banknote, CreditCard, Plus, Smartphone, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,32 +12,62 @@ import { toast } from "@/components/ui/toaster";
 import { useDisclosure } from "@/hooks/useDisclosure";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
-const EARNINGS = [
-  { month: "Feb", amount: 18500 }, { month: "Mar", amount: 24200 }, { month: "Apr", amount: 19800 },
-  { month: "May", amount: 31000 }, { month: "Jun", amount: 27600 }, { month: "Jul", amount: 34200 },
-];
+import type { Appointment } from "@/types";
+import { appointmentsService } from "@/services/api/appointments.service";
 
 interface Transaction { id: string; client: string; description: string; amount: number; status: "paid" | "pending"; date: string }
 
-const TRANSACTIONS: Transaction[] = [
-  { id: "txn-1", client: "Meet Agrawal", description: "Video consultation", amount: 1500, status: "paid", date: "2026-07-22T00:00:00" },
-  { id: "txn-2", client: "Farhan Ali", description: "GST notice response", amount: 3200, status: "paid", date: "2026-07-18T00:00:00" },
-  { id: "txn-3", client: "Neha Kulkarni", description: "Trademark filing", amount: 3500, status: "pending", date: "2026-07-15T00:00:00" },
-  { id: "txn-4", client: "Karan Vora", description: "Chat consultation", amount: 700, status: "paid", date: "2026-07-10T00:00:00" },
-];
+function getMonthlyEarnings(transactions: Transaction[]) {
+  const months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul"];
+  const sums: Record<string, number> = { Feb: 0, Mar: 0, Apr: 0, May: 0, Jun: 0, Jul: 0 };
+  const paid = transactions.filter((t) => t.status === "paid");
+  for (const t of paid) {
+    if (t.date) {
+      const monthStr = new Date(t.date).toLocaleString("en-US", { month: "short" });
+      if (sums[monthStr] !== undefined) {
+        sums[monthStr] += t.amount || 0;
+      }
+    }
+  }
+  return months.map((month) => ({ month, amount: sums[month] || 0 }));
+}
 
 const WITHDRAWAL_METHODS = [
   { id: "bank", label: "HDFC Bank •• 4821", icon: Banknote, primary: true },
-  { id: "upi", label: "priya@okhdfcbank", icon: Smartphone, primary: false },
+  { id: "upi", label: "pay@okhdfcbank", icon: Smartphone, primary: false },
 ];
 
 export function LawyerPaymentsPage() {
   const [methods, setMethods] = useState(WITHDRAWAL_METHODS);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const addMethod = useDisclosure();
   const withdraw = useDisclosure();
   const [newAccount, setNewAccount] = useState("");
-  const totalEarned = TRANSACTIONS.filter((t) => t.status === "paid").reduce((s, t) => s + t.amount, 0);
-  const pending = TRANSACTIONS.filter((t) => t.status === "pending").reduce((s, t) => s + t.amount, 0);
+
+  useEffect(() => {
+    let cancelled = false;
+    appointmentsService.list().then((res) => {
+      if (!cancelled) setAppointments(res || []);
+    }).catch(() => {
+      if (!cancelled) setAppointments([]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const transactions: Transaction[] = appointments.map((a) => ({
+    id: `txn-${a.id}`,
+    client: a.clientName || "Client",
+    description: `${a.type} consultation`,
+    amount: a.fee,
+    status: a.status === "completed" || a.status === "upcoming" ? "paid" : "pending",
+    date: typeof a.date === "string" ? a.date : new Date(a.date).toISOString(),
+  }));
+
+  const totalEarned = transactions.filter((t) => t.status === "paid").reduce((s, t) => s + t.amount, 0);
+  const pending = transactions.filter((t) => t.status === "pending").reduce((s, t) => s + t.amount, 0);
+
 
   const columns: DataGridColumn<Transaction>[] = [
     { key: "client", header: "Client", render: (t) => t.client, sortValue: (t) => t.client },
@@ -68,7 +99,7 @@ export function LawyerPaymentsPage() {
         <CardHeader><CardTitle>Earnings — Last 6 Months</CardTitle></CardHeader>
         <CardContent className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={EARNINGS}>
+            <BarChart data={getMonthlyEarnings(transactions)}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
               <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} />
               <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} />
@@ -100,9 +131,10 @@ export function LawyerPaymentsPage() {
       <Card>
         <CardHeader><CardTitle>Transaction History</CardTitle></CardHeader>
         <CardContent>
-          <DataGrid columns={columns} rows={TRANSACTIONS} getRowId={(t) => t.id} />
+          <DataGrid columns={columns} rows={transactions} getRowId={(t) => t.id} />
         </CardContent>
       </Card>
+
 
       <Modal open={withdraw.isOpen} onOpenChange={withdraw.close} title="Withdraw funds" footer={<><Button variant="outline" onClick={withdraw.close}>Cancel</Button><Button onClick={() => { withdraw.close(); toast.success("Withdrawal request submitted"); }}>Confirm withdrawal</Button></>}>
         <p className="text-sm text-muted-foreground">Available balance: <span className="font-semibold text-foreground">{formatCurrency(totalEarned - 12000)}</span></p>

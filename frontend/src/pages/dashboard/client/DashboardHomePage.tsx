@@ -19,14 +19,20 @@ import { useAuth } from "@/context/AuthContext";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes.constants";
 
-const MONTHLY_CONSULTATIONS = [
-  { month: "Feb", count: 1 },
-  { month: "Mar", count: 2 },
-  { month: "Apr", count: 1 },
-  { month: "May", count: 3 },
-  { month: "Jun", count: 2 },
-  { month: "Jul", count: 4 },
-];
+function getMonthlyConsultations(appointments: Appointment[]) {
+  const months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul"];
+  const counts: Record<string, number> = { Feb: 0, Mar: 0, Apr: 0, May: 0, Jun: 0, Jul: 0 };
+  for (const appt of appointments) {
+    if (appt.date) {
+      const monthStr = new Date(appt.date).toLocaleString("en-US", { month: "short" });
+      if (counts[monthStr] !== undefined) {
+        counts[monthStr] += 1;
+      }
+    }
+  }
+  return months.map((month) => ({ month, count: counts[month] || 0 }));
+}
+
 
 const STATUS_COLORS: Record<string, string> = {
   open: "#f59e0b",
@@ -164,7 +170,7 @@ export function DashboardHomePage() {
           </CardHeader>
           <CardContent className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={MONTHLY_CONSULTATIONS}>
+              <BarChart data={getMonthlyConsultations(appointments)}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="month" tickLine={false} />
                 <YAxis tickLine={false} allowDecimals={false} />

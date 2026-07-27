@@ -8,10 +8,9 @@ export class TrustEngineService {
     verificationId: string,
     status: "VERIFIED" | "REJECTED",
     scoreImpact: number,
-    reason?: string
+    reason?: string,
   ) {
     return await prisma.$transaction(async (tx) => {
-      // 1. Fetch verification and user
       const verification = await tx.verification.findUnique({
         where: { id: verificationId },
         include: { user: true },
@@ -21,23 +20,14 @@ export class TrustEngineService {
         throw new Error("Verification record not found");
       }
 
-      // Guard against double-processing (e.g. a retried request re-scoring
-      // a claim that was already resolved).
       if (verification.status !== "PENDING") {
-        throw new Error(
-          `Verification ${verificationId} was already ${verification.status}`
-        );
+        throw new Error(`Verification ${verificationId} was already ${verification.status}`);
       }
 
-      // Calculate score delta (+impact for verified, -impact for rejected)
-      const pointsDelta =
-        status === "VERIFIED" ? Math.abs(scoreImpact) : -Math.abs(scoreImpact);
+      const pointsDelta = status === "VERIFIED" ? Math.abs(scoreImpact) : -Math.abs(scoreImpact);
       const currentScore = verification.user.trustScore;
-
-      // Keep trust score bounded between 0 and 1000
       const newScore = Math.max(0, Math.min(1000, currentScore + pointsDelta));
 
-      // 2. Update verification status
       const updatedVerification = await tx.verification.update({
         where: { id: verificationId },
         data: {
@@ -46,13 +36,11 @@ export class TrustEngineService {
         },
       });
 
-      // 3. Update user trust score
       await tx.user.update({
         where: { id: verification.userId },
         data: { trustScore: newScore },
       });
 
-      // 4. Create immutable audit log entry
       const trustLog = await tx.trustLog.create({
         data: {
           userId: verification.userId,
@@ -67,6 +55,52 @@ export class TrustEngineService {
         verification: updatedVerification,
         newScore,
         trustLog,
+      };
+    });
+  }
+
+  /**
+   * Recalculates lawyer trust score and rating metrics after review submissions
+   */
+  static async recalculateLawyerTrustScore(lawyerId: string) {
+    return await prisma.$transaction(async (tx) => {
+      const lawyer = await tx.lawyer.findUnique({
+        where: { id: lawyerId },
+        include: { reviews: true, user: true },
+      });
+
+      if (!lawyer) return null;
+
+      const reviewCount = lawyer.reviews.length;
+      let averageRating = 0;
+      if (reviewCount > 0) {
+        const sum = lawyer.reviews.reduce((acc, r) => acc + r.rating, 0);
+        averageRating = Number((sum / reviewCount).toFixed(1));
+      }
+
+      const verifiedReviewsCount = lawyer.reviews.filter((r) => r.verifiedClient).length;
+      const calculatedTrustScore = Math.min(1000, Math.round(averageRating * 150 + verifiedReviewsCount * 25));
+
+      const updatedLawyer = await tx.lawyer.update({
+        where: { id: lawyerId },
+        data: {
+          rating: averageRating,
+          reviewCount,
+        },
+      });
+
+      if (lawyer.userId) {
+        await tx.user.update({
+          where: { id: lawyer.userId },
+          data: { trustScore: calculatedTrustScore },
+        });
+      }
+
+      return {
+        lawyer: updatedLawyer,
+        trustScore: calculatedTrustScore,
+        rating: averageRating,
+        reviewCount,
       };
     });
   }

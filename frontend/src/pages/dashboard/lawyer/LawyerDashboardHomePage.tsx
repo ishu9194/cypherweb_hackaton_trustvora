@@ -9,10 +9,21 @@ import { Avatar } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
-const EARNINGS = [
-  { month: "Feb", amount: 18500 }, { month: "Mar", amount: 24200 }, { month: "Apr", amount: 19800 },
-  { month: "May", amount: 31000 }, { month: "Jun", amount: 27600 }, { month: "Jul", amount: 34200 },
-];
+function getEarningsHistory(appointments: Appointment[]) {
+  const months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul"];
+  const sums: Record<string, number> = { Feb: 0, Mar: 0, Apr: 0, May: 0, Jun: 0, Jul: 0 };
+  const completed = appointments.filter((a) => a.status === "completed");
+  for (const appt of completed) {
+    if (appt.date) {
+      const monthStr = new Date(appt.date).toLocaleString("en-US", { month: "short" });
+      if (sums[monthStr] !== undefined) {
+        sums[monthStr] += appt.fee || 0;
+      }
+    }
+  }
+  return months.map((month) => ({ month, amount: sums[month] || 0 }));
+}
+
 
 export function LawyerDashboardHomePage() {
   const { user } = useAuth();
@@ -70,7 +81,8 @@ export function LawyerDashboardHomePage() {
           </CardHeader>
           <CardContent className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={EARNINGS}>
+              <BarChart data={getEarningsHistory(appointments)}>
+
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="month" tickLine={false} />
                 <YAxis tickLine={false} />

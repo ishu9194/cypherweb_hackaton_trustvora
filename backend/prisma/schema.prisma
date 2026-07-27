@@ -156,6 +156,8 @@ model Appointment {
   @@index([lawyerId])
 }
 
+
+
 model Message {
   id             String   @id @default(cuid())
   conversationId String

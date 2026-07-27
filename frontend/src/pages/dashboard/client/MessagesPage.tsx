@@ -58,7 +58,14 @@ export function MessagesPage() {
         setConversations((prev) =>
           prev.map((c) => {
             if (c.id === active.id) {
-              if (c.messages.some((m) => m.id === newMsg.id)) return c;
+              const exists = c.messages.some(
+                (m) =>
+                  m.id === newMsg.id ||
+                  (m.text === newMsg.text &&
+                    Math.abs(new Date(m.timestamp).getTime() - new Date(newMsg.timestamp).getTime()) < 5000),
+              );
+              if (exists) return c;
+
               return {
                 ...c,
                 messages: [...c.messages, newMsg],

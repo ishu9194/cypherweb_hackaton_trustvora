@@ -6,7 +6,7 @@ export const CreateAppointmentSchema = z.object({
   lawyerAvatarUrl: z.string().min(1),
   date: z.string().min(1),
   type: z.enum(["video", "voice", "office", "chat"]),
-  fee: z.number().int().nonnegative(),
+  fee: z.coerce.number().int().nonnegative(),
 });
 export type CreateAppointmentInput = z.infer<typeof CreateAppointmentSchema>;
 

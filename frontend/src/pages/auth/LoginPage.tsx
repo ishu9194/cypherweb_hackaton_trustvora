@@ -47,34 +47,11 @@ export function LoginPage() {
     }
   };
 
-  const handleDemoLogin = async (demoRole: UserRole) => {
-    const email = demoRole === "lawyer" ? "lawyer@trustix.dev" : "client@trustix.dev";
-    try {
-      await login(email, "demo1234");
-      toast.success(`Logged in as demo ${demoRole}`);
-      navigate(demoRole === "lawyer" ? ROUTES.lawyerDashboard : ROUTES.clientDashboard);
-    } catch {
-      toast.error("Demo login failed");
-    }
-  };
-
   return (
     <div>
       <h1 className="font-display text-2xl font-bold text-foreground">Welcome back</h1>
       <p className="mt-1.5 text-sm text-muted-foreground">Log in to manage your consultations and cases.</p>
 
-      <div className="mt-6 rounded-xl border border-dashed border-border bg-surface-sunken p-4">
-        <p className="text-xs font-semibold text-foreground">Try a demo account</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">No signup needed — jump straight into either dashboard.</p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => handleDemoLogin("client")} isLoading={isLoading}>
-            Demo Client
-          </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => handleDemoLogin("lawyer")} isLoading={isLoading}>
-            Demo Lawyer
-          </Button>
-        </div>
-      </div>
 
       <div className="mt-6">
         <RadioGroup

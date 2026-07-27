@@ -76,3 +76,42 @@ export const me = asyncHandler(async (request: FastifyRequest, reply: FastifyRep
 
   return reply.status(200).send({ success: true, data: { ...toPublicUser(user), lawyerProfile: user.lawyerProfile } });
 });
+
+export const updateProfile = asyncHandler(async (request: FastifyRequest, reply: FastifyReply) => {
+  const { sub } = request.user as { sub: string };
+  const { name, bio, city, consultationFee } = request.body as {
+    name?: string;
+    bio?: string;
+    city?: string;
+    consultationFee?: number;
+  };
+
+  const updatedUser = await prisma.user.update({
+    where: { id: sub },
+    data: {
+      ...(name && { name }),
+    },
+    include: { lawyerProfile: true },
+  });
+
+  if (updatedUser.lawyerProfile && (bio || city || consultationFee)) {
+    await prisma.lawyer.update({
+      where: { id: updatedUser.lawyerProfile.id },
+      data: {
+        ...(bio && { bio }),
+        ...(city && { city }),
+        ...(consultationFee !== undefined && { consultationFee: Number(consultationFee) }),
+      },
+    });
+  }
+
+  const finalUser = await prisma.user.findUnique({
+    where: { id: sub },
+    include: { lawyerProfile: true },
+  });
+
+  return reply.status(200).send({
+    success: true,
+    data: { ...toPublicUser(finalUser!), lawyerProfile: finalUser?.lawyerProfile },
+  });
+});

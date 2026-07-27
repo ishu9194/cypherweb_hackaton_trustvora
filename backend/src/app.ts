@@ -10,7 +10,9 @@ import { appointmentsRoutes } from "./routes/appointments.routes.js";
 import { reviewsRoutes } from "./routes/reviews.routes.js";
 import { adminRoutes } from "./routes/admin.routes.js";
 import { dashboardRoutes } from "./routes/dashboard.routes.js";
+import { lawyerDashboardRoutes } from "./routes/lawyerDashboard.routes.js";
 import { contentRoutes } from "./routes/content.routes.js";
+
 import { setupSocketIO } from "./socket.js";
 
 
@@ -59,7 +61,9 @@ for (const prefix of ["/api", "/api/v1"]) {
   await fastify.register(reviewsRoutes, { prefix: `${prefix}/reviews` });
   await fastify.register(adminRoutes, { prefix: `${prefix}/admin` });
   await fastify.register(dashboardRoutes, { prefix: `${prefix}/dashboard` });
+  await fastify.register(lawyerDashboardRoutes, { prefix: `${prefix}/lawyer` });
   await fastify.register(contentRoutes, { prefix: `${prefix}/content` });
+
 }
 
 // Health check endpoint

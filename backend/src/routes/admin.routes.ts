@@ -18,29 +18,27 @@ import {
   updateTicketStatus,
   verifyLawyer,
 } from "../controllers/admin.controller.js";
-import { requireRole, verifyToken } from "../middleware/auth.js";
 
 export async function adminRoutes(fastify: FastifyInstance) {
-  // Uncomment preHandler hooks if strict token verification is enforced:
-  // const authHooks = { preHandler: [verifyToken, requireRole("ADMIN")] };
+  const authOpt = { onRequest: [fastify.authenticate] };
 
-  fastify.get("/stats", getStats);
-  fastify.get("/revenue", getRevenue);
-  fastify.get("/cases", getCases);
-  fastify.patch("/cases/:id/status", updateCaseStatus);
-  fastify.get("/clients", getClients);
-  fastify.patch("/clients/:id/status", updateClientStatus);
-  fastify.get("/lawyers", getLawyers);
-  fastify.patch("/lawyers/:id/verify", verifyLawyer);
-  fastify.get("/payments", getPayments);
-  fastify.get("/payouts", getPayouts);
-  fastify.get("/refunds", getRefunds);
-  fastify.post("/payments/refund", processRefund);
-  fastify.patch("/refunds/:id/decision", processRefund);
-  fastify.get("/reports", getReports);
-  fastify.get("/reports/export", exportReport);
-  fastify.get("/reports/:id/export", exportReport);
-  fastify.get("/tickets", getTickets);
-  fastify.patch("/tickets/:id/status", updateTicketStatus);
-  fastify.post("/tickets/:id/reply", replyToTicket);
+  fastify.get("/stats", authOpt, getStats);
+  fastify.get("/revenue", authOpt, getRevenue);
+  fastify.get("/cases", authOpt, getCases);
+  fastify.patch("/cases/:id/status", authOpt, updateCaseStatus);
+  fastify.get("/clients", authOpt, getClients);
+  fastify.patch("/clients/:id/status", authOpt, updateClientStatus);
+  fastify.get("/lawyers", authOpt, getLawyers);
+  fastify.patch("/lawyers/:id/verify", authOpt, verifyLawyer);
+  fastify.get("/payments", authOpt, getPayments);
+  fastify.get("/payouts", authOpt, getPayouts);
+  fastify.get("/refunds", authOpt, getRefunds);
+  fastify.post("/payments/refund", authOpt, processRefund);
+  fastify.patch("/refunds/:id/decision", authOpt, processRefund);
+  fastify.get("/reports", authOpt, getReports);
+  fastify.get("/reports/export", authOpt, exportReport);
+  fastify.get("/reports/:id/export", authOpt, exportReport);
+  fastify.get("/tickets", authOpt, getTickets);
+  fastify.patch("/tickets/:id/status", authOpt, updateTicketStatus);
+  fastify.post("/tickets/:id/reply", authOpt, replyToTicket);
 }

@@ -81,7 +81,7 @@ export function HeroSection() {
               <Button size="lg" variant="outline" asChild>
                 <Link to={ROUTES.services}>
                   <PlayCircle className="h-4 w-4" />
-                  Watch Demo
+                  Explore Services
                 </Link>
               </Button>
             </motion.div>

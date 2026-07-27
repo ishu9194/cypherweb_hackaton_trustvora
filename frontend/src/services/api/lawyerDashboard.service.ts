@@ -4,6 +4,7 @@ import type { ChatMessage } from "./dashboard.service";
 
 export interface ClientConversation {
   id: string;
+  clientId?: string;
   clientName: string;
   clientAvatarUrl?: string;
   lastMessage: string;
@@ -14,6 +15,7 @@ export interface ClientConversation {
   online?: boolean;
   messages: ChatMessage[];
 }
+
 
 export const lawyerDashboardService = {
   async getConversations(): Promise<ClientConversation[]> {
