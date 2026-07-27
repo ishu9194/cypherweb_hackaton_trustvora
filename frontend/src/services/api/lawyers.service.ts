@@ -80,4 +80,20 @@ export const lawyersService = {
       return [];
     }
   },
+
+  async getSavedLawyers(): Promise<Lawyer[]> {
+    try {
+      return await apiClient.get<Lawyer[]>("/dashboard/saved-lawyers");
+    } catch {
+      return [];
+    }
+  },
+
+  async toggleSaveLawyer(lawyerId: string): Promise<{ success: boolean; saved: boolean }> {
+    try {
+      return await apiClient.post<{ success: boolean; saved: boolean }>(`/dashboard/saved-lawyers/${lawyerId}/toggle`);
+    } catch {
+      return { success: false, saved: false };
+    }
+  },
 };

@@ -24,8 +24,117 @@ export const getCases = asyncHandler(async (req: FastifyRequest, reply: FastifyR
   return reply.send({ success: true, data: cases });
 });
 
-export const getDocuments = asyncHandler(async (_req: FastifyRequest, reply: FastifyReply) => {
-  return reply.send({ success: true, data: [] });
+export const getDocuments = asyncHandler(async (req: FastifyRequest, reply: FastifyReply) => {
+  const { sub } = req.user as { sub: string };
+
+  const documents = await prisma.document.findMany({
+    where: { userId: sub },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const formatted = documents.map((d) => ({
+    id: d.id,
+    name: d.name,
+    category: d.category,
+    sizeLabel: d.sizeLabel,
+    uploadedAt: d.createdAt.toISOString(),
+    url: d.url || "#",
+  }));
+
+  return reply.send({ success: true, data: formatted });
+});
+
+export const uploadDocument = asyncHandler(async (req: FastifyRequest, reply: FastifyReply) => {
+  const { sub } = req.user as { sub: string };
+  const { name, category, sizeLabel, url } = req.body as {
+    name: string;
+    category?: string;
+    sizeLabel?: string;
+    url?: string;
+  };
+
+  if (!name || !name.trim()) {
+    throw new HttpError(400, "Document name is required");
+  }
+
+  const doc = await prisma.document.create({
+    data: {
+      userId: sub,
+      name,
+      category: category || "General",
+      sizeLabel: sizeLabel || "1.2 MB",
+      url: url || null,
+    },
+  });
+
+  return reply.status(201).send({
+    success: true,
+    data: {
+      id: doc.id,
+      name: doc.name,
+      category: doc.category,
+      sizeLabel: doc.sizeLabel,
+      uploadedAt: doc.createdAt.toISOString(),
+      url: doc.url || "#",
+    },
+  });
+});
+
+export const deleteDocument = asyncHandler(async (req: FastifyRequest, reply: FastifyReply) => {
+  const { sub } = req.user as { sub: string };
+  const { id } = req.params as { id: string };
+
+  const doc = await prisma.document.findFirst({
+    where: { id, userId: sub },
+  });
+
+  if (!doc) {
+    throw new HttpError(404, "Document not found");
+  }
+
+  await prisma.document.delete({ where: { id } });
+
+  return reply.send({ success: true, message: "Document deleted successfully" });
+});
+
+export const getSavedLawyers = asyncHandler(async (req: FastifyRequest, reply: FastifyReply) => {
+  const { sub } = req.user as { sub: string };
+
+  const saved = await prisma.savedLawyer.findMany({
+    where: { userId: sub },
+    include: { lawyer: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const lawyers = saved.map((s) => s.lawyer);
+
+  return reply.send({ success: true, data: lawyers });
+});
+
+export const toggleSaveLawyer = asyncHandler(async (req: FastifyRequest, reply: FastifyReply) => {
+  const { sub } = req.user as { sub: string };
+  const { id: lawyerId } = req.params as { id: string };
+
+  const existing = await prisma.savedLawyer.findUnique({
+    where: {
+      userId_lawyerId: { userId: sub, lawyerId },
+    },
+  });
+
+  if (existing) {
+    await prisma.savedLawyer.delete({
+      where: { id: existing.id },
+    });
+    return reply.send({ success: true, saved: false, message: "Lawyer removed from saved list" });
+  } else {
+    await prisma.savedLawyer.create({
+      data: {
+        userId: sub,
+        lawyerId,
+      },
+    });
+    return reply.send({ success: true, saved: true, message: "Lawyer saved successfully" });
+  }
 });
 
 export const getNotifications = asyncHandler(async (req: FastifyRequest, reply: FastifyReply) => {
@@ -127,8 +236,33 @@ export const getMessages = asyncHandler(async (req: FastifyRequest, reply: Fasti
     }
   }
 
+  if (conversationMap.size === 0) {
+    const topLawyers = await prisma.lawyer.findMany({
+      take: 4,
+      orderBy: { rating: "desc" },
+    });
+
+    for (const l of topLawyers) {
+      conversationMap.set(`conv-${l.id}`, {
+        id: `conv-${l.id}`,
+        partnerName: l.name,
+        partnerAvatarUrl: l.avatarUrl,
+        partnerRole: "lawyer",
+        lawyerId: l.id,
+        lawyerName: l.name,
+        lawyerAvatarUrl: l.avatarUrl,
+        lastMessage: "Click to start consultation chat",
+        lastMessageAt: l.joinedAt ? l.joinedAt.toISOString() : new Date().toISOString(),
+        unreadCount: 0,
+        online: l.online,
+        messages: [],
+      });
+    }
+  }
+
   return reply.send({ success: true, data: Array.from(conversationMap.values()) });
 });
+
 
 export const sendMessage = asyncHandler(async (req: FastifyRequest, reply: FastifyReply) => {
   const { sub } = req.user as { sub: string };

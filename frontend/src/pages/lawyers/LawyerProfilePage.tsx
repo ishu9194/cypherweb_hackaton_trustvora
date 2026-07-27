@@ -374,10 +374,12 @@ export function LawyerProfilePage() {
                 <CalendarCheck className="h-4 w-4" />
                 Book Consultation
               </Button>
-              <Button variant="outline" size="lg" className="mt-2 w-full" onClick={() => toast.success(`Starting a chat with ${lawyer.name}`)}>
+              <Button variant="outline" size="lg" className="mt-2 w-full" onClick={() => navigate(`${ROUTES.clientMessages}?lawyerId=${lawyer.id}&lawyerName=${encodeURIComponent(lawyer.name)}`)}>
+
                 <MessageCircle className="h-4 w-4" />
                 Chat Now
               </Button>
+
 
               <div className="mt-5 border-t border-border pt-5">
                 <p className="mb-2 text-xs font-semibold text-foreground">Languages</p>

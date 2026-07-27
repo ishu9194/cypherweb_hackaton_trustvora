@@ -8,6 +8,7 @@ export interface DashboardDocument {
   sizeLabel: string;
   uploadedAt: string;
   caseId?: string;
+  url?: string;
 }
 
 export interface DashboardNotification {
@@ -66,6 +67,23 @@ export const dashboardService = {
       return await apiClient.get<DashboardDocument[]>("/dashboard/documents");
     } catch {
       return [];
+    }
+  },
+
+  async uploadDocument(doc: { name: string; category?: string; sizeLabel?: string; url?: string }): Promise<DashboardDocument | null> {
+    try {
+      return await apiClient.post<DashboardDocument>("/dashboard/documents", doc);
+    } catch {
+      return null;
+    }
+  },
+
+  async deleteDocument(id: string): Promise<boolean> {
+    try {
+      await apiClient.delete(`/dashboard/documents/${id}`);
+      return true;
+    } catch {
+      return false;
     }
   },
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Check, CheckCheck, MessageSquare, Mic, Paperclip, Image as ImageIcon, Send, Smile, FileText } from "lucide-react";
 import type { ChatMessage, Conversation } from "@/services/api/dashboard.service";
@@ -18,6 +18,10 @@ import { emitTyping, getSocket, joinConversation, sendSocketMessage } from "@/se
 const EMOJIS = ["👍", "❤️", "😂", "🙏", "🎉", "👏", "😊", "🔥"];
 
 export function MessagesPage() {
+  const [searchParams] = useSearchParams();
+  const lawyerIdParam = searchParams.get("lawyerId");
+  const lawyerNameParam = searchParams.get("lawyerName");
+
   const { data: initialConvs, isLoading, error, refetch } = useAsync(() => dashboardService.getMessages(), []);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | undefined>(undefined);
@@ -28,11 +32,34 @@ export function MessagesPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (initialConvs && initialConvs.length > 0) {
-      setConversations(initialConvs);
-      if (!activeId) setActiveId(initialConvs[0].id);
+    if (initialConvs) {
+      let list = [...initialConvs];
+      if (lawyerIdParam && !list.some((c) => c.lawyerId === lawyerIdParam || c.id === `conv-${lawyerIdParam}`)) {
+        const targetName = lawyerNameParam || "Lawyer";
+        const newConv: Conversation = {
+          id: `conv-${lawyerIdParam}`,
+          partnerName: targetName,
+          partnerRole: "lawyer",
+          lawyerId: lawyerIdParam,
+          lawyerName: targetName,
+          lastMessage: "Start a conversation",
+          lastMessageAt: new Date().toISOString(),
+          unreadCount: 0,
+          online: true,
+          messages: [],
+        };
+        list = [newConv, ...list];
+      }
+      setConversations(list);
+      if (lawyerIdParam) {
+        const target = list.find((c) => c.lawyerId === lawyerIdParam || c.id === `conv-${lawyerIdParam}`);
+        if (target) setActiveId(target.id);
+      } else if (!activeId && list.length > 0) {
+        setActiveId(list[0].id);
+      }
     }
-  }, [initialConvs, activeId]);
+  }, [initialConvs, lawyerIdParam, lawyerNameParam, activeId]);
+
 
   const active = conversations.find((c) => c.id === activeId) ?? conversations[0];
   const filtered = conversations.filter((c) => (c.lawyerName ?? "").toLowerCase().includes(query.toLowerCase()));

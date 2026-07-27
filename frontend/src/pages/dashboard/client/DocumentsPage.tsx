@@ -29,7 +29,7 @@ export function DocumentsPage() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [dragging, setDragging] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+
   const renameModal = useDisclosure();
   const [renaming, setRenaming] = useState<DashboardDocument | null>(null);
   const [newName, setNewName] = useState("");
@@ -40,23 +40,26 @@ export function DocumentsPage() {
 
   const filtered = docs.filter((d) => d.name.toLowerCase().includes(query.toLowerCase()) && (category === "all" || d.category === category));
 
-  const addFiles = (files: FileList) => {
-    Array.from(files).forEach((file) => {
-      const id = `doc-${Date.now()}-${Math.random()}`;
-      const doc: DashboardDocument = { id, name: file.name, category: "Correspondence", sizeLabel: `${(file.size / 1024).toFixed(0)} KB`, uploadedAt: new Date().toISOString() };
-      setDocs((prev) => [doc, ...prev]);
-      setUploadProgress((prev) => ({ ...prev, [id]: 0 }));
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += 25 + Math.random() * 25;
-        setUploadProgress((prev) => ({ ...prev, [id]: Math.min(100, progress) }));
-        if (progress >= 100) {
-          clearInterval(interval);
-          setTimeout(() => setUploadProgress((prev) => { const next = { ...prev }; delete next[id]; return next; }), 500);
-        }
-      }, 300);
-    });
-    toast.success(`${files.length} file(s) uploading`);
+  const addFiles = async (files: FileList) => {
+    for (const file of Array.from(files)) {
+      const sizeKb = (file.size / 1024).toFixed(0);
+      const sizeLabel = `${sizeKb} KB`;
+      const created = await dashboardService.uploadDocument({
+        name: file.name,
+        category: "Correspondence",
+        sizeLabel,
+      });
+
+      if (created) {
+        setDocs((prev) => [created, ...prev]);
+        toast.success(`Uploaded ${file.name}`);
+      } else {
+        const id = `doc-${Date.now()}`;
+        const doc: DashboardDocument = { id, name: file.name, category: "Correspondence", sizeLabel, uploadedAt: new Date().toISOString() };
+        setDocs((prev) => [doc, ...prev]);
+        toast.success(`Added ${file.name}`);
+      }
+    }
   };
 
   const openRename = (doc: DashboardDocument) => { setRenaming(doc); setNewName(doc.name); renameModal.open(); };
@@ -67,10 +70,12 @@ export function DocumentsPage() {
     toast.success("Document renamed");
   };
 
-  const deleteDoc = (id: string) => {
+  const deleteDoc = async (id: string) => {
     setDocs((prev) => prev.filter((d) => d.id !== id));
+    await dashboardService.deleteDocument(id);
     toast.success("Document deleted");
   };
+
 
   const downloadDoc = (doc: DashboardDocument) => {
     downloadTextFile(doc.name.replace(/\.[^.]+$/, ".txt"), `Trustix document placeholder for ${doc.name}\nCategory: ${doc.category}\nUploaded: ${formatDate(doc.uploadedAt)}`);
@@ -119,12 +124,8 @@ export function DocumentsPage() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">{doc.name}</p>
                 <p className="text-xs text-muted-foreground">{doc.category} · {doc.sizeLabel} · {formatDate(doc.uploadedAt)}</p>
-                {uploadProgress[doc.id] !== undefined && (
-                  <div className="mt-1.5 h-1 w-full max-w-xs overflow-hidden rounded-full bg-surface-sunken">
-                    <motion.div className="h-full rounded-full bg-accent-500" animate={{ width: `${uploadProgress[doc.id]}%` }} />
-                  </div>
-                )}
               </div>
+
               <Button size="icon" variant="ghost" aria-label="Rename" onClick={() => openRename(doc)}><Edit2 className="h-4 w-4" /></Button>
               <Button size="icon" variant="ghost" aria-label="Download" onClick={() => downloadDoc(doc)}><Download className="h-4 w-4" /></Button>
               <Button size="icon" variant="ghost" aria-label="Delete" onClick={() => deleteDoc(doc.id)}><Trash2 className="h-4 w-4" /></Button>

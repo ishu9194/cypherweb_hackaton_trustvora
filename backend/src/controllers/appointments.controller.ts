@@ -109,3 +109,55 @@ export const updateAppointmentStatus = asyncHandler(async (request: FastifyReque
 
   return reply.status(200).send({ success: true, data: updated });
 });
+
+export const rescheduleAppointment = asyncHandler(async (request: FastifyRequest, reply: FastifyReply) => {
+  const { sub, role } = request.user;
+  const { id } = request.params as { id: string };
+  const { date } = request.body as { date: string };
+
+  if (!date) {
+    throw new HttpError(400, "New date is required for rescheduling");
+  }
+
+  const appointment = await prisma.appointment.findUnique({ where: { id } });
+  if (!appointment) {
+    throw new HttpError(404, "Appointment not found");
+  }
+
+  const scope = await resolveScope(sub, role);
+  const owns = ("clientId" in scope && scope.clientId === appointment.clientId)
+    || ("lawyerId" in scope && scope.lawyerId === appointment.lawyerId);
+  if (!owns) {
+    throw new HttpError(403, "You don't have permission to reschedule this appointment");
+  }
+
+  const newBookingDate = new Date(date);
+  newBookingDate.setSeconds(0, 0);
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const existing = await tx.appointment.findFirst({
+      where: {
+        id: { not: id },
+        lawyerId: appointment.lawyerId,
+        date: newBookingDate,
+        status: { in: ["pending", "upcoming", "completed"] },
+      },
+    });
+
+    if (existing) {
+      throw new HttpError(409, "This lawyer already has a consultation booked at the selected date and time.");
+    }
+
+    return await tx.appointment.update({
+      where: { id },
+      data: {
+        date: newBookingDate,
+        status: "upcoming",
+      },
+    });
+  });
+
+  emitAppointmentStatusChanged(updated);
+
+  return reply.status(200).send({ success: true, data: updated });
+});

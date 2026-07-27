@@ -27,6 +27,11 @@ export const appointmentsService = {
     return apiClient.patch<Appointment>(ENDPOINTS.appointments.updateStatus(id), { status });
   },
 
+  /** Calls PATCH /api/v1/appointments/:id/reschedule */
+  async reschedule(id: string, date: string): Promise<Appointment> {
+    return apiClient.patch<Appointment>(`/appointments/${id}/reschedule`, { date });
+  },
+
   /** Convenience wrapper around updateStatus for the common cancel action. */
   async cancel(id: string): Promise<Appointment> {
     return this.updateStatus(id, "cancelled");

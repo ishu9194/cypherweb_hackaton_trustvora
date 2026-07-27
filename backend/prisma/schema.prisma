@@ -34,6 +34,8 @@ model User {
   lawyerProfile  Lawyer?
   reviewsWritten Review[]
   appointments   Appointment[]
+  documents      Document[]
+  savedLawyers   SavedLawyer[]
 }
 
 model Verification {
@@ -63,8 +65,6 @@ model TrustLog {
   @@index([userId])
 }
 
-/// Lawyer marketplace profile. One-to-one with User so a lawyer can log in
-/// with the same auth flow as a client (role = LAWYER).
 model Lawyer {
   id                   String   @id @default(cuid())
   userId               String   @unique
@@ -94,6 +94,7 @@ model Lawyer {
 
   reviews              Review[]
   appointments         Appointment[]
+  savedBy              SavedLawyer[]
 
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
@@ -127,8 +128,6 @@ model Review {
   @@index([lawyerId])
 }
 
-/// Lowercase to match the frontend's AppointmentStatus union directly —
-/// no case-mapping layer needed in the service/controller (unlike Role).
 enum AppointmentStatus {
   pending
   upcoming
@@ -156,8 +155,6 @@ model Appointment {
   @@index([lawyerId])
 }
 
-
-
 model Message {
   id             String   @id @default(cuid())
   conversationId String
@@ -173,3 +170,27 @@ model Message {
   @@index([senderId])
 }
 
+model Document {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  category  String
+  sizeLabel String   @default("1.0 MB")
+  url       String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model SavedLawyer {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lawyerId  String
+  lawyer    Lawyer   @relation(fields: [lawyerId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, lawyerId])
+  @@index([userId])
+}

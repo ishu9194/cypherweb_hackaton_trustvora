@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { CalendarClock, Download, MessageCircle, Star, Video } from "lucide-react";
 import type { Appointment, AppointmentStatus } from "@/types";
 import { appointmentsService } from "@/services/api/appointments.service";
@@ -12,6 +12,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { SearchBox } from "@/components/ui/search-box";
 import { Pagination } from "@/components/ui/pagination";
 import { Modal } from "@/components/ui/modal";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/states/EmptyState";
@@ -22,7 +23,17 @@ import { ROUTES } from "@/constants/routes.constants";
 
 const PAGE_SIZE = 5;
 
-function AppointmentRow({ appointment, onReview }: { appointment: Appointment; onReview: (a: Appointment) => void }) {
+function AppointmentRow({
+  appointment,
+  onReview,
+  onReschedule,
+}: {
+  appointment: Appointment;
+  onReview: (a: Appointment) => void;
+  onReschedule: (a: Appointment) => void;
+}) {
+  const navigate = useNavigate();
+
   return (
     <Card lift>
       <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -48,7 +59,7 @@ function AppointmentRow({ appointment, onReview }: { appointment: Appointment; o
               <Button size="sm" onClick={() => toast.success("Joining video consultation…")}>
                 <Video className="h-3.5 w-3.5" /> Join
               </Button>
-              <Button size="sm" variant="outline" onClick={() => toast.success("Reschedule flow opened")}>
+              <Button size="sm" variant="outline" onClick={() => onReschedule(appointment)}>
                 <CalendarClock className="h-3.5 w-3.5" /> Reschedule
               </Button>
             </>
@@ -77,7 +88,12 @@ function AppointmentRow({ appointment, onReview }: { appointment: Appointment; o
               </Button>
             </>
           )}
-          <Button size="icon" variant="ghost" aria-label="Message" onClick={() => toast.success(`Opening chat with ${appointment.lawyerName}`)}>
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label="Message"
+            onClick={() => navigate(`${ROUTES.clientMessages}?lawyerId=${appointment.lawyerId}&lawyerName=${encodeURIComponent(appointment.lawyerName)}`)}
+          >
             <MessageCircle className="h-4 w-4" />
           </Button>
         </div>
@@ -91,12 +107,20 @@ export function AppointmentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+
+  // Review Modal state
   const reviewModal = useDisclosure();
   const [reviewTarget, setReviewTarget] = useState<Appointment | null>(null);
   const [reviewRating, setReviewRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  // Reschedule Modal state
+  const rescheduleModal = useDisclosure();
+  const [rescheduleTarget, setRescheduleTarget] = useState<Appointment | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [isSubmittingReschedule, setIsSubmittingReschedule] = useState(false);
 
   const fetchAppointments = () => {
     setIsLoading(true);
@@ -111,9 +135,6 @@ export function AppointmentsPage() {
     fetchAppointments();
   }, []);
 
-  // Pending appointments haven't been confirmed by the lawyer yet, but they
-  // still belong in "Upcoming" from the client's point of view — there's no
-  // separate tab for them.
   const filterByStatus = (status: AppointmentStatus) =>
     appointments.filter((a) => {
       const matchesStatus = status === "upcoming" ? a.status === "upcoming" || a.status === "pending" : a.status === status;
@@ -126,6 +147,14 @@ export function AppointmentsPage() {
     setHoverRating(0);
     setReviewText("");
     reviewModal.open();
+  };
+
+  const openRescheduleModal = (target: Appointment) => {
+    setRescheduleTarget(target);
+    const d = new Date(target.date || Date.now());
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    setRescheduleDate(d.toISOString().slice(0, 16));
+    rescheduleModal.open();
   };
 
   const renderList = (status: AppointmentStatus) => {
@@ -150,7 +179,9 @@ export function AppointmentsPage() {
     }
     return (
       <div className="space-y-3">
-        {pageItems.map((a) => <AppointmentRow key={a.id} appointment={a} onReview={openReviewModal} />)}
+        {pageItems.map((a) => (
+          <AppointmentRow key={a.id} appointment={a} onReview={openReviewModal} onReschedule={openRescheduleModal} />
+        ))}
         <Pagination page={page} totalPages={Math.max(1, Math.ceil(list.length / PAGE_SIZE))} onPageChange={setPage} className="pt-2" />
       </div>
     );
@@ -185,6 +216,25 @@ export function AppointmentsPage() {
     }
   };
 
+  const submitReschedule = async () => {
+    if (!rescheduleTarget) return;
+    if (!rescheduleDate) {
+      toast.error("Please select a new date and time");
+      return;
+    }
+    setIsSubmittingReschedule(true);
+    try {
+      await appointmentsService.reschedule(rescheduleTarget.id, new Date(rescheduleDate).toISOString());
+      toast.success(`Rescheduled appointment with ${rescheduleTarget.lawyerName}`);
+      rescheduleModal.close();
+      await fetchAppointments();
+    } catch (err: any) {
+      toast.error(err?.message || "Couldn't reschedule appointment. Please select another slot.");
+    } finally {
+      setIsSubmittingReschedule(false);
+    }
+  };
+
   const tabs = useMemo(
     () => [
       { value: "upcoming", label: "Upcoming", content: renderList("upcoming") },
@@ -207,6 +257,7 @@ export function AppointmentsPage() {
 
       <Tabs tabs={tabs} />
 
+      {/* Review Modal */}
       <Modal
         open={reviewModal.isOpen}
         onOpenChange={reviewModal.close}
@@ -238,6 +289,29 @@ export function AppointmentsPage() {
           })}
         </div>
         <Textarea placeholder="Share your experience…" value={reviewText} onChange={(e) => setReviewText(e.target.value)} rows={4} />
+      </Modal>
+
+      {/* Reschedule Modal */}
+      <Modal
+        open={rescheduleModal.isOpen}
+        onOpenChange={rescheduleModal.close}
+        title={`Reschedule Consultation — ${rescheduleTarget?.lawyerName ?? ""}`}
+        footer={
+          <>
+            <Button variant="outline" onClick={rescheduleModal.close} disabled={isSubmittingReschedule}>Cancel</Button>
+            <Button onClick={submitReschedule} isLoading={isSubmittingReschedule}>Confirm Reschedule</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">Select a new date and time for your consultation with {rescheduleTarget?.lawyerName}:</p>
+          <Input
+            type="datetime-local"
+            value={rescheduleDate}
+            onChange={(e) => setRescheduleDate(e.target.value)}
+            className="w-full"
+          />
+        </div>
       </Modal>
     </div>
   );

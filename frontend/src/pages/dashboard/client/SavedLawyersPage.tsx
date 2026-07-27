@@ -18,15 +18,26 @@ export function SavedLawyersPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const ids = Array.from(favorites);
-    if (ids.length === 0) {
-      setSaved([]);
-      setIsLoading(false);
-      return;
-    }
     let cancelled = false;
     setIsLoading(true);
-    Promise.all(ids.map((id) => lawyersService.getById(id))).then((results) => {
+
+    lawyersService.getSavedLawyers().then(async (dbSaved) => {
+      if (!cancelled && dbSaved.length > 0) {
+        setSaved(dbSaved);
+        setIsLoading(false);
+        return;
+      }
+
+      const ids = Array.from(favorites);
+      if (ids.length === 0) {
+        if (!cancelled) {
+          setSaved([]);
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      const results = await Promise.all(ids.map((id) => lawyersService.getById(id)));
       if (!cancelled) {
         setSaved(results.filter((l): l is Lawyer => l !== null));
         setIsLoading(false);
@@ -37,10 +48,12 @@ export function SavedLawyersPage() {
         setIsLoading(false);
       }
     });
+
     return () => {
       cancelled = true;
     };
   }, [favorites]);
+
 
   return (
     <div className="space-y-6">
