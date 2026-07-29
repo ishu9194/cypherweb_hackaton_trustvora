@@ -182,31 +182,75 @@ export function MessagesPage() {
     );
   };
 
-  const attach = (type: "image" | "document" | "voice") => {
+  const attach = async (type: "image" | "document" | "voice") => {
     if (!active) return;
-    const names = { image: "Photo.jpg", document: "Document.pdf", voice: "Voice note" };
-    const attachmentObj = { type, name: names[type], url: "#", duration: type === "voice" ? "0:12" : undefined };
-    const message: ChatMessage = {
-      id: `m-${Date.now()}`,
-      senderId: "me",
-      text: names[type],
-      attachment: attachmentObj,
-      timestamp: new Date().toISOString(),
-      read: false,
+
+    if (type === "voice") {
+      const attachmentObj = { type, name: "Voice note", url: "#", duration: "0:12" };
+      const message: ChatMessage = {
+        id: `m-${Date.now()}`,
+        senderId: "me",
+        text: "Voice note",
+        attachment: attachmentObj,
+        timestamp: new Date().toISOString(),
+        read: false,
+      };
+      setConversations((prev) => prev.map((c) => (c.id === active.id ? { ...c, messages: [...c.messages, message] } : c)));
+      sendSocketMessage({
+        conversationId: active.id,
+        text: "Voice note",
+        content: "Voice note",
+        receiverId: active.lawyerId || active.id,
+        senderName: "Client",
+        attachment: attachmentObj,
+      });
+      toast.success("Voice message sent");
+      return;
+    }
+
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = type === "image" ? "image/*" : ".pdf,.doc,.docx,.txt";
+
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      try {
+        toast.loading(`Uploading ${file.name} to Supabase...`);
+        const { uploadToSupabase, BUCKETS } = await import("@/lib/supabase");
+        const fileUrl = await uploadToSupabase(file, BUCKETS.CHAT, "attachments");
+        toast.dismiss();
+
+        const attachmentObj = { type, name: file.name, url: fileUrl };
+        const message: ChatMessage = {
+          id: `m-${Date.now()}`,
+          senderId: "me",
+          text: file.name,
+          attachment: attachmentObj,
+          timestamp: new Date().toISOString(),
+          read: false,
+        };
+
+        setConversations((prev) => prev.map((c) => (c.id === active.id ? { ...c, messages: [...c.messages, message] } : c)));
+
+        sendSocketMessage({
+          conversationId: active.id,
+          text: file.name,
+          content: file.name,
+          receiverId: active.lawyerId || active.id,
+          senderName: "Client",
+          attachment: attachmentObj,
+        });
+
+        toast.success(`Sent ${file.name}`);
+      } catch (err: any) {
+        toast.dismiss();
+        toast.error(err.message || "Failed to upload file");
+      }
     };
 
-    setConversations((prev) => prev.map((c) => (c.id === active.id ? { ...c, messages: [...c.messages, message] } : c)));
-
-    sendSocketMessage({
-      conversationId: active.id,
-      text: names[type],
-      content: names[type],
-      receiverId: active.lawyerId || active.id,
-      senderName: "Client",
-      attachment: attachmentObj,
-    });
-
-    toast.success(`${type === "voice" ? "Voice message" : "File"} sent`);
+    input.click();
   };
 
   if (error) return <ErrorState description={error} onRetry={refetch} />;

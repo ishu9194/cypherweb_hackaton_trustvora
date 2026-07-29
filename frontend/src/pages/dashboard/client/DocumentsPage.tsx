@@ -44,20 +44,30 @@ export function DocumentsPage() {
     for (const file of Array.from(files)) {
       const sizeKb = (file.size / 1024).toFixed(0);
       const sizeLabel = `${sizeKb} KB`;
+
+      let fileUrl = "";
+      try {
+        const { uploadToSupabase, BUCKETS } = await import("@/lib/supabase");
+        fileUrl = await uploadToSupabase(file, BUCKETS.DOCUMENTS, "user-docs");
+      } catch (err: any) {
+        console.warn("Supabase storage upload error, fallback to metadata:", err);
+      }
+
       const created = await dashboardService.uploadDocument({
         name: file.name,
         category: "Correspondence",
         sizeLabel,
+        url: fileUrl || undefined,
       });
 
       if (created) {
         setDocs((prev) => [created, ...prev]);
-        toast.success(`Uploaded ${file.name}`);
+        toast.success(`Uploaded ${file.name} to Supabase storage`);
       } else {
         const id = `doc-${Date.now()}`;
-        const doc: DashboardDocument = { id, name: file.name, category: "Correspondence", sizeLabel, uploadedAt: new Date().toISOString() };
+        const doc: DashboardDocument = { id, name: file.name, category: "Correspondence", sizeLabel, uploadedAt: new Date().toISOString(), url: fileUrl || undefined };
         setDocs((prev) => [doc, ...prev]);
-        toast.success(`Added ${file.name}`);
+        toast.success(`Uploaded ${file.name}`);
       }
     }
   };

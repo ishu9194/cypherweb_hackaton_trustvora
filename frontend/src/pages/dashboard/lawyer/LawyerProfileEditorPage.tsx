@@ -400,7 +400,56 @@ export function LawyerProfileEditorPage() {
       <div className="overflow-hidden rounded-xl border border-border bg-card">
         <SectionHeader icon={User} title="Basic Information" description="Name, title, bio, location" open={open.basic} onToggle={() => toggle("basic")} />
         {open.basic && (
-          <div className="border-t border-border p-5">
+          <div className="border-t border-border p-5 space-y-6">
+            {/* Avatar Photo Upload */}
+            <div className="flex items-center gap-4 rounded-xl border border-border bg-surface/50 p-4">
+              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 border-brand-500 bg-surface">
+                <img
+                  src={form.avatarUrl || profile?.avatarUrl || "https://placehold.co/160?text=Avatar"}
+                  alt="Profile Avatar"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="flex-1 space-y-1">
+                <p className="text-sm font-semibold text-foreground">Profile Picture</p>
+                <p className="text-xs text-muted-foreground">Upload a photo to Supabase storage (`profile-image` bucket).</p>
+                <div className="flex items-center gap-2 pt-1">
+                  <label className="cursor-pointer rounded-lg bg-brand-500/10 px-3 py-1.5 text-xs font-medium text-brand-600 transition-colors hover:bg-brand-500/20">
+                    <span>📷 Upload Photo</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          toast.loading("Uploading photo to Supabase...");
+                          const { uploadToSupabase, BUCKETS } = await import("@/lib/supabase");
+                          const url = await uploadToSupabase(file, BUCKETS.PROFILE, "avatars");
+                          setForm((prev) => ({ ...prev, avatarUrl: url }));
+                          toast.dismiss();
+                          toast.success("Profile photo uploaded!");
+                        } catch (err: any) {
+                          toast.dismiss();
+                          toast.error(err.message || "Photo upload failed");
+                        }
+                      }}
+                    />
+                  </label>
+                  {form.avatarUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setForm((prev) => ({ ...prev, avatarUrl: "" }))}
+                      className="text-xs text-muted-foreground hover:text-danger"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input label="Full Name *" value={String(form.name ?? "")} onChange={f("name")} />
               <Input label="Professional Title" placeholder="e.g. Advocate, Supreme Court" value={String(form.title ?? "")} onChange={f("title")} />
@@ -640,7 +689,34 @@ export function LawyerProfileEditorPage() {
             )}
             <div className="rounded-lg border border-dashed border-border p-4 space-y-3">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Add Image</p>
-              <Input label="Image URL *" placeholder="https://example.com/photo.jpg" value={newGallery.url} onChange={(e) => setNewGallery((p) => ({ ...p, url: e.target.value }))} />
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Input label="Image URL *" placeholder="https://example.com/photo.jpg" value={newGallery.url} onChange={(e) => setNewGallery((p) => ({ ...p, url: e.target.value }))} className="flex-1" />
+                <div className="mt-5 shrink-0">
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-foreground hover:bg-surface-sunken">
+                    <span>📁 Upload Image File</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          toast.loading("Uploading image to Supabase...");
+                          const { uploadToSupabase, BUCKETS } = await import("@/lib/supabase");
+                          const url = await uploadToSupabase(file, BUCKETS.PROFILE, "gallery");
+                          setNewGallery((p) => ({ ...p, url }));
+                          toast.dismiss();
+                          toast.success("Image uploaded! Click 'Add Image' to save to your gallery.");
+                        } catch (err: any) {
+                          toast.dismiss();
+                          toast.error(err.message || "Image upload failed");
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <Input label="Caption (optional)" value={newGallery.caption} onChange={(e) => setNewGallery((p) => ({ ...p, caption: e.target.value }))} />
                 <div>
