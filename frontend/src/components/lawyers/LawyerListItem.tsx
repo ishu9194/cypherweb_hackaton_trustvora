@@ -1,5 +1,5 @@
+import { memo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import { CalendarCheck, Heart, MessageCircle, Scale as ScaleIcon, Share2, Star, TrendingUp } from "lucide-react";
 import type { Lawyer } from "@/types";
 import { Avatar } from "@/components/ui/avatar";
@@ -13,10 +13,7 @@ import { useFavoritesStore } from "@/hooks/useFavoritesStore";
 import { ROUTES } from "@/constants/routes.constants";
 import { lawyersService } from "@/services/api/lawyers.service";
 
-
-
-
-export function LawyerListItem({ lawyer, className }: { lawyer: Lawyer; className?: string }) {
+export const LawyerListItem = memo(function LawyerListItem({ lawyer, className }: { lawyer: Lawyer; className?: string }) {
   const navigate = useNavigate();
   const { isFavorited, toggleFavorite } = useFavoritesStore();
   const { isCompared, toggleCompare, isFull } = useCompareStore();
@@ -24,13 +21,10 @@ export function LawyerListItem({ lawyer, className }: { lawyer: Lawyer; classNam
   const compared = isCompared(lawyer.id);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.35 }}
-      className={cn("card-lift flex flex-col gap-5 rounded-2xl border border-border bg-surface p-5 sm:flex-row sm:items-center", className)}
+    <div
+      className={cn("card-lift animate-fade-up flex flex-col gap-5 rounded-2xl border border-border bg-surface p-5 sm:flex-row sm:items-center", className)}
     >
+
       <div className="flex items-center gap-4 sm:w-64 sm:shrink-0">
         <Avatar src={lawyer.avatarUrl} name={lawyer.name} size="lg" online={lawyer.online} verified={lawyer.verified} />
         <div>
@@ -121,6 +115,7 @@ export function LawyerListItem({ lawyer, className }: { lawyer: Lawyer; classNam
           </Button>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
-}
+});
+

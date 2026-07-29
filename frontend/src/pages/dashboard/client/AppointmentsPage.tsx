@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CalendarClock, Download, MessageCircle, Star, Video } from "lucide-react";
 import type { Appointment, AppointmentStatus } from "@/types";
@@ -23,7 +23,7 @@ import { ROUTES } from "@/constants/routes.constants";
 
 const PAGE_SIZE = 5;
 
-function AppointmentRow({
+const AppointmentRow = memo(function AppointmentRow({
   appointment,
   onReview,
   onReschedule,
@@ -35,6 +35,7 @@ function AppointmentRow({
   const navigate = useNavigate();
 
   return (
+
     <Card lift>
       <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
@@ -100,9 +101,10 @@ function AppointmentRow({
       </CardContent>
     </Card>
   );
-}
+});
 
 export function AppointmentsPage() {
+
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [query, setQuery] = useState("");

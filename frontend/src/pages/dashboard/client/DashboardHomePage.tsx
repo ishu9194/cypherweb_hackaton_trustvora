@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts";
 import {
@@ -81,30 +81,31 @@ export function DashboardHomePage() {
     };
   }, [favorites]);
 
-  const upcoming = appointments.filter((a) => a.status === "upcoming");
-  const totalSpent = payments.filter((p) => p.status === "paid").reduce((sum, p) => sum + p.amount, 0);
+  const upcoming = useMemo(() => appointments.filter((a) => a.status === "upcoming"), [appointments]);
+  const totalSpent = useMemo(() => payments.filter((p) => p.status === "paid").reduce((sum, p) => sum + p.amount, 0), [payments]);
 
-  const caseStatusData = [
+  const caseStatusData = useMemo(() => [
     { name: "Open", value: cases.filter((c) => c.status === "open").length, key: "open" },
     { name: "In Progress", value: cases.filter((c) => c.status === "in-progress").length, key: "in-progress" },
     { name: "Closed", value: cases.filter((c) => c.status === "closed").length, key: "closed" },
-  ].filter((d) => d.value > 0);
+  ].filter((d) => d.value > 0), [cases]);
 
-  const stats = [
+  const stats = useMemo(() => [
     { label: "Upcoming appointments", value: upcoming.length, icon: CalendarClock, color: "text-brand-600 bg-brand-50 dark:bg-brand-500/10" },
     { label: "Active cases", value: cases.filter((c) => c.status !== "closed").length, icon: Briefcase, color: "text-accent-600 bg-accent-50 dark:bg-accent-500/10" },
     { label: "Total spent", value: formatCurrency(totalSpent), icon: CreditCard, color: "text-warning bg-warning/10" },
     { label: "Saved lawyers", value: favorites.size, icon: Heart, color: "text-danger bg-danger/10" },
-  ];
+  ], [upcoming.length, cases, totalSpent, favorites.size]);
 
-  const quickActions = [
+  const quickActions = useMemo(() => [
     { label: "Find a Lawyer", icon: Search, action: () => navigate(ROUTES.findLawyers) },
     { label: "Message", icon: MessageSquare, action: () => navigate(ROUTES.clientMessages) },
     { label: "Upload Document", icon: Upload, action: () => navigate(ROUTES.clientDocuments) },
     { label: "View Cases", icon: Briefcase, action: () => navigate(ROUTES.clientCases) },
-  ];
+  ], [navigate]);
 
-  const unreadNotifications = notifications.filter((n) => !n.read);
+  const unreadNotifications = useMemo(() => notifications.filter((n) => !n.read), [notifications]);
+
 
   return (
     <div className="space-y-6">

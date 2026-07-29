@@ -101,7 +101,8 @@ export function LawyerProfilePage() {
       {/* Hero */}
       <div className="relative overflow-hidden bg-gradient-to-br from-navy-900 via-navy-800 to-brand-900">
         <div className="gradient-mesh pointer-events-none absolute inset-0 opacity-30" />
-        <div className="relative mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 lg:px-8">
+        <div className="relative mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 lg:px-8">
+
           <Breadcrumb items={[{ label: "Find Lawyers", href: ROUTES.findLawyers }, { label: lawyer.name }]} className="[&_*]:text-white/70 [&_a:hover]:text-white" />
 
           <motion.div
@@ -182,7 +183,8 @@ export function LawyerProfilePage() {
       </div>
 
       {/* Content */}
-      <div className="mx-auto -mt-14 max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto mt-8 max-w-7xl px-4 sm:px-6 lg:px-8">
+
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
           <div className="rounded-2xl border border-border bg-surface p-6 shadow-soft sm:p-8">
             <Tabs

@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import { CalendarCheck, Heart, MessageCircle, Scale as ScaleIcon, Share2, Star, TrendingUp } from "lucide-react";
 import type { Lawyer } from "@/types";
 import { Avatar } from "@/components/ui/avatar";
@@ -14,13 +13,12 @@ import { MAX_COMPARE, useCompareStore } from "@/hooks/useCompareStore";
 import { useFavoritesStore } from "@/hooks/useFavoritesStore";
 import { lawyersService } from "@/services/api/lawyers.service";
 
-
 interface LawyerCardProps {
   lawyer: Lawyer;
   className?: string;
 }
 
-export function LawyerCard({ lawyer, className }: LawyerCardProps) {
+export const LawyerCard = memo(function LawyerCard({ lawyer, className }: LawyerCardProps) {
   const navigate = useNavigate();
   const { isFavorited, toggleFavorite } = useFavoritesStore();
   const { isCompared, toggleCompare, isFull } = useCompareStore();
@@ -58,15 +56,11 @@ export function LawyerCard({ lawyer, className }: LawyerCardProps) {
     navigate(`${ROUTES.clientMessages}?lawyerId=${lawyer.id}&lawyerName=${encodeURIComponent(lawyer.name)}`);
   };
 
-
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.4 }}
-      className={cn("card-lift group flex flex-col rounded-2xl border border-border bg-surface p-6", className)}
+    <div
+      className={cn("card-lift animate-fade-up group flex flex-col rounded-2xl border border-border bg-surface p-6", className)}
     >
+
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <Avatar src={lawyer.avatarUrl} name={lawyer.name} size="lg" online={lawyer.online} verified={lawyer.verified} />
@@ -175,6 +169,7 @@ export function LawyerCard({ lawyer, className }: LawyerCardProps) {
           </Button>
         </Tooltip>
       </div>
-    </motion.div>
+    </div>
   );
-}
+});
+

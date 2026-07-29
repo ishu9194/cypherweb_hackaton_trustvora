@@ -14,7 +14,8 @@ import { NoResultsState } from "@/components/lawyers/NoResultsState";
 import { CompareBar } from "@/components/lawyers/CompareBar";
 import { useDisclosure } from "@/hooks/useDisclosure";
 import { useLawyerFilters } from "@/hooks/useLawyerFilters";
-import { AnimatePresence, motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+
 
 export function FindLawyersPage() {
   const {
@@ -68,20 +69,16 @@ export function FindLawyersPage() {
               onTryPracticeArea={(area) => updateFilter("practiceAreas", [area])}
             />
           ) : (
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={`${view}-${page}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.25 }}
-                className={view === "grid" ? "grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3" : "space-y-4"}
-              >
-                {pageResults.map((lawyer) =>
-                  view === "grid" ? <LawyerCard key={lawyer.id} lawyer={lawyer} /> : <LawyerListItem key={lawyer.id} lawyer={lawyer} />,
-                )}
-              </motion.div>
-            </AnimatePresence>
+            <div
+              key={`${view}-${page}`}
+              className={cn("animate-fade-in", view === "grid" ? "grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3" : "space-y-4")}
+            >
+              {pageResults.map((lawyer) =>
+                view === "grid" ? <LawyerCard key={lawyer.id} lawyer={lawyer} /> : <LawyerListItem key={lawyer.id} lawyer={lawyer} />,
+              )}
+            </div>
           )}
+
 
           {!isLoading && pageResults.length > 0 && (
             <Pagination page={page} totalPages={totalPages} onPageChange={setPage} className="pt-4" />

@@ -163,13 +163,13 @@
   --radius-lg: var(--radius-lg);
   --radius-xl: var(--radius-xl);
 
-  --animate-fade-in: fade-in 0.4s ease-out;
-  --animate-fade-up: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-scale-in: scale-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-fade-in: fade-in 0.15s ease-out;
+  --animate-fade-up: fade-up 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-scale-in: scale-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-shimmer: shimmer 1.8s ease-in-out infinite;
   --animate-float: float 6s ease-in-out infinite;
-  --animate-drawer-in-right: drawer-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-drawer-in-left: drawer-in-left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-drawer-in-right: drawer-in-right 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-drawer-in-left: drawer-in-left 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @layer base {
@@ -210,11 +210,11 @@
 }
 
 @layer components {
-  /* Glassmorphism surface used for floating navbars / hero cards */
+  /* Glassmorphism surface — optimized blur for high FPS scrolling */
   .glass {
-    background-color: color-mix(in oklab, var(--surface) 72%, transparent);
-    backdrop-filter: blur(16px) saturate(160%);
-    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    background-color: color-mix(in oklab, var(--surface) 85%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
   }
 
@@ -226,14 +226,13 @@
     color: transparent;
   }
 
-  /* Ambient animated gradient mesh for hero sections */
+  /* Ambient gradient mesh for hero sections */
   .gradient-mesh {
     background-image:
-      radial-gradient(at 15% 20%, color-mix(in oklab, var(--color-brand-500) 22%, transparent) 0px, transparent 50%),
-      radial-gradient(at 85% 10%, color-mix(in oklab, var(--color-accent-500) 18%, transparent) 0px, transparent 50%),
-      radial-gradient(at 50% 85%, color-mix(in oklab, var(--color-brand-700) 20%, transparent) 0px, transparent 50%);
+      radial-gradient(at 15% 20%, color-mix(in oklab, var(--color-brand-500) 18%, transparent) 0px, transparent 50%),
+      radial-gradient(at 85% 10%, color-mix(in oklab, var(--color-accent-500) 15%, transparent) 0px, transparent 50%),
+      radial-gradient(at 50% 85%, color-mix(in oklab, var(--color-brand-700) 15%, transparent) 0px, transparent 50%);
     background-size: 200% 200%;
-    animation: mesh-drift 18s ease-in-out infinite;
   }
 
   /* Skeleton shimmer */
@@ -252,13 +251,15 @@
   }
 
   .card-lift {
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .card-lift:hover {
-    transform: translateY(-4px);
+    transform: translate3d(0, -3px, 0);
     box-shadow: var(--shadow-lifted);
   }
 }
+
 
 @keyframes fade-in {
   from { opacity: 0; }
