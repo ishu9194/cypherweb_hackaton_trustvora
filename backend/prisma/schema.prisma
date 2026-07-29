@@ -92,9 +92,31 @@ model Lawyer {
   successRate          Int      @default(0)
   joinedAt             DateTime @default(now())
 
+  // Extended profile fields (all optional for backwards compatibility)
+  title                String?  // e.g. "Advocate, Supreme Court"
+  subtitle             String?  // e.g. "Bar Council · District Court"
+  barNumber            String?
+  barCouncilName       String?
+  phone                String?
+  whatsapp             String?
+  website              String?
+  linkedin             String?
+  onlineConsultation   Boolean  @default(true)
+  offlineConsultation  Boolean  @default(false)
+  workingDays          String?  // e.g. "Mon - Sat"
+  workingHours         String?  // e.g. "10:00 AM - 6:00 PM"
+
   reviews              Review[]
   appointments         Appointment[]
   savedBy              SavedLawyer[]
+
+  // Rich profile relations
+  education            LawyerEducation[]
+  timeline             LawyerTimeline[]
+  courtMemberships     LawyerCourtMembership[]
+  faqs                 LawyerFAQ[]
+  officeLocations      LawyerOffice[]
+  gallery              LawyerGalleryImage[]
 
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
@@ -103,6 +125,80 @@ model Lawyer {
   @@index([rating])
   @@index([consultationFee])
 }
+
+model LawyerEducation {
+  id          String @id @default(cuid())
+  lawyerId    String
+  lawyer      Lawyer @relation(fields: [lawyerId], references: [id], onDelete: Cascade)
+  degree      String
+  institution String
+  year        Int
+  order       Int    @default(0)
+
+  @@index([lawyerId])
+}
+
+model LawyerTimeline {
+  id          String @id @default(cuid())
+  lawyerId    String
+  lawyer      Lawyer @relation(fields: [lawyerId], references: [id], onDelete: Cascade)
+  year        String
+  title       String
+  description String
+  order       Int    @default(0)
+
+  @@index([lawyerId])
+}
+
+model LawyerCourtMembership {
+  id        String @id @default(cuid())
+  lawyerId  String
+  lawyer    Lawyer @relation(fields: [lawyerId], references: [id], onDelete: Cascade)
+  courtName String
+  since     Int
+  order     Int    @default(0)
+
+  @@index([lawyerId])
+}
+
+model LawyerFAQ {
+  id       String @id @default(cuid())
+  lawyerId String
+  lawyer   Lawyer @relation(fields: [lawyerId], references: [id], onDelete: Cascade)
+  question String
+  answer   String
+  order    Int    @default(0)
+
+  @@index([lawyerId])
+}
+
+model LawyerOffice {
+  id       String @id @default(cuid())
+  lawyerId String
+  lawyer   Lawyer @relation(fields: [lawyerId], references: [id], onDelete: Cascade)
+  name     String
+  address  String
+  city     String
+  state    String
+  pincode  String?
+  mapsLink String?
+  order    Int     @default(0)
+
+  @@index([lawyerId])
+}
+
+model LawyerGalleryImage {
+  id       String @id @default(cuid())
+  lawyerId String
+  lawyer   Lawyer @relation(fields: [lawyerId], references: [id], onDelete: Cascade)
+  url      String
+  caption  String?
+  type     String  @default("photo") // photo | certificate | office
+  order    Int     @default(0)
+
+  @@index([lawyerId])
+}
+
 
 model PracticeArea {
   id           String @id

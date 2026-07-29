@@ -17,22 +17,28 @@ export function formatCurrency(value: number): string {
   }).format(value);
 }
 
-/** Formats an ISO date string into a readable label, e.g. "12 Jul 2026". */
-export function formatDate(iso: string): string {
+/** Formats an ISO date string into a readable label, e.g. "12 Jul 2026". Returns "—" for invalid input. */
+export function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
   return new Intl.DateTimeFormat("en-IN", {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }).format(new Date(iso));
+  }).format(d);
 }
 
-/** Formats an ISO date string into a time label, e.g. "3:30 PM". */
-export function formatTime(iso: string): string {
+/** Formats an ISO date string into a time label, e.g. "3:30 PM". Returns "—" for invalid input. */
+export function formatTime(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
   return new Intl.DateTimeFormat("en-IN", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-  }).format(new Date(iso));
+  }).format(d);
 }
 
 /** Builds initials from a full name, e.g. "Meet Agrawal" -> "MA". */

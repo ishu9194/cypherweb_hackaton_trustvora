@@ -2,12 +2,11 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Award, BadgeCheck, BookOpen, CalendarCheck, Camera, Download, Flag, GraduationCap,
+  BadgeCheck, BookOpen, CalendarCheck, Camera, Download, Flag, GraduationCap,
   Heart, Landmark, MapPin, MessageCircle, Share2, Star, TrendingUp,
 } from "lucide-react";
 import type { Lawyer, Review } from "@/types";
 import { lawyersService } from "@/services/api/lawyers.service";
-import { getLawyerExtras } from "@/data/lawyerProfiles.data";
 import { getSlotsForDate } from "@/data/availability.data";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -78,8 +77,15 @@ export function LawyerProfilePage() {
   if (notFound) return <Navigate to={ROUTES.notFound} replace />;
   if (isLoading || !lawyer) return <LawyerProfileSkeleton />;
 
-  const extras = getLawyerExtras(lawyer.id);
   const favorited = isFavorited(lawyer.id);
+
+  // Rich profile data comes directly from the API (included in lawyer object)
+  const education = lawyer.education ?? [];
+  const timeline = lawyer.timeline ?? [];
+  const courtMemberships = lawyer.courtMemberships ?? [];
+  const faqs = lawyer.faqs ?? [];
+  const officeLocations = lawyer.officeLocations ?? [];
+  const gallery = lawyer.gallery ?? [];
 
   const handleDownload = () => {
     const content = `${lawyer.name}\n${lawyer.qualification}\n${lawyer.court}\n\nSpecializations: ${lawyer.specializations.join(", ")}\nExperience: ${lawyer.experienceYears} years\nRating: ${lawyer.rating} (${lawyer.reviewCount} reviews)\nConsultation Fee: ${formatCurrency(lawyer.consultationFee)}\n\nBio:\n${lawyer.bio}\n\nGenerated from Trustix on ${new Date().toLocaleDateString("en-IN")}`;
@@ -203,70 +209,54 @@ export function LawyerProfilePage() {
                         <h3 className="mb-3 flex items-center gap-2 font-display text-base font-semibold text-foreground">
                           <GraduationCap className="h-4 w-4 text-brand-600" /> Education
                         </h3>
-                        <ul className="space-y-2">
-                          {extras.education.map((edu) => (
-                            <li key={edu.degree} className="flex justify-between rounded-lg bg-surface-sunken px-4 py-2.5 text-sm">
-                              <span className="text-foreground">{edu.degree} — {edu.institution}</span>
-                              <span className="text-muted-foreground">{edu.year}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      {extras.certifications.length > 0 && (
-                        <div>
-                          <h3 className="mb-3 flex items-center gap-2 font-display text-base font-semibold text-foreground">
-                            <BadgeCheck className="h-4 w-4 text-brand-600" /> Certifications
-                          </h3>
+                        {education.length > 0 ? (
                           <ul className="space-y-2">
-                            {extras.certifications.map((cert) => (
-                              <li key={cert.name} className="flex justify-between rounded-lg bg-surface-sunken px-4 py-2.5 text-sm">
-                                <span className="text-foreground">{cert.name} — {cert.issuer}</span>
-                                <span className="text-muted-foreground">{cert.year}</span>
+                            {education.map((edu) => (
+                              <li key={edu.id} className="flex justify-between rounded-lg bg-surface-sunken px-4 py-2.5 text-sm">
+                                <span className="text-foreground">{edu.degree} — {edu.institution}</span>
+                                <span className="text-muted-foreground">{edu.year}</span>
                               </li>
                             ))}
                           </ul>
-                        </div>
-                      )}
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Education details not provided yet.</p>
+                        )}
+                      </div>
+
+
 
                       <div>
                         <h3 className="mb-3 font-display text-base font-semibold text-foreground">Career Timeline</h3>
-                        <Timeline
-                          steps={extras.timeline.map((t, i) => ({
-                            title: t.title,
-                            description: t.description,
-                            timestamp: t.year,
-                            status: i === extras.timeline.length - 1 ? "current" : "complete",
-                          }))}
-                        />
+                        {timeline.length > 0 ? (
+                          <Timeline
+                            steps={timeline.map((t, i) => ({
+                              title: t.title,
+                              description: t.description,
+                              timestamp: t.year,
+                              status: i === timeline.length - 1 ? "current" : "complete",
+                            }))}
+                          />
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No career timeline entries yet.</p>
+                        )}
                       </div>
 
                       <div>
                         <h3 className="mb-3 flex items-center gap-2 font-display text-base font-semibold text-foreground">
                           <Landmark className="h-4 w-4 text-brand-600" /> Court Memberships
                         </h3>
-                        <div className="flex flex-wrap gap-2">
-                          {extras.courtMemberships.map((m) => (
-                            <Badge key={m.name} variant="outline">{m.name} · since {m.since}</Badge>
-                          ))}
-                        </div>
+                        {courtMemberships.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {courtMemberships.map((m) => (
+                              <Badge key={m.id} variant="outline">{m.courtName} · since {m.since}</Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No court memberships listed yet.</p>
+                        )}
                       </div>
 
-                      {extras.awards.length > 0 && (
-                        <div>
-                          <h3 className="mb-3 flex items-center gap-2 font-display text-base font-semibold text-foreground">
-                            <Award className="h-4 w-4 text-brand-600" /> Awards
-                          </h3>
-                          <ul className="space-y-2">
-                            {extras.awards.map((award) => (
-                              <li key={award.title} className="flex justify-between rounded-lg bg-surface-sunken px-4 py-2.5 text-sm">
-                                <span className="text-foreground">{award.title} — {award.issuer}</span>
-                                <span className="text-muted-foreground">{award.year}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
+
                     </div>
                   ),
                 },
@@ -297,7 +287,7 @@ export function LawyerProfilePage() {
                                   <p className="text-sm font-semibold text-foreground">{review.authorName}</p>
                                   {review.verifiedClient && <Badge variant="success">Verified</Badge>}
                                 </div>
-                                <p className="text-xs text-muted-foreground">{formatDate(review.date)}</p>
+                                <p className="text-xs text-muted-foreground">{formatDate((review as any).createdAt ?? review.date)}</p>
                               </div>
                             </div>
                             <div className="flex gap-0.5 text-amber-500">
@@ -322,12 +312,21 @@ export function LawyerProfilePage() {
                   label: "Gallery",
                   content: (
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                      {extras.galleryLabels.map((label) => (
-                        <div key={label} className="flex aspect-square flex-col items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-brand-100 to-accent-100 text-brand-700 dark:from-brand-500/10 dark:to-accent-500/10 dark:text-brand-300">
-                          <Camera className="h-6 w-6" />
-                          <span className="px-2 text-center text-xs font-medium">{label}</span>
+                      {gallery.length > 0 ? gallery.map((img) => (
+                        <div key={img.id} className="relative overflow-hidden rounded-xl aspect-video bg-surface-sunken">
+                          <img src={img.url} alt={img.caption ?? "Gallery"} className="h-full w-full object-cover" onError={(e) => (e.currentTarget.src = "https://placehold.co/400x225?text=Image")} />
+                          {img.caption && (
+                            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                              <p className="text-[10px] text-white">{img.caption}</p>
+                            </div>
+                          )}
                         </div>
-                      ))}
+                      )) : (
+                        <div className="col-span-full flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border p-10 text-muted-foreground">
+                          <Camera className="h-8 w-8" />
+                          <p className="text-sm">No gallery images yet.</p>
+                        </div>
+                      )}
                     </div>
                   ),
                 },
@@ -336,25 +335,28 @@ export function LawyerProfilePage() {
                   label: "Locations",
                   content: (
                     <div className="space-y-3">
-                      {extras.officeLocations.map((office) => (
-                        <div key={office.label} className="flex gap-3 rounded-xl border border-border p-4">
+                      {officeLocations.length > 0 ? officeLocations.map((office) => (
+                        <div key={office.id} className="flex gap-3 rounded-xl border border-border p-4">
                           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/10">
                             <MapPin className="h-4.5 w-4.5" />
                           </span>
                           <div>
-                            <p className="text-sm font-semibold text-foreground">{office.label}</p>
-                            <p className="text-sm text-muted-foreground">{office.address}, {office.city}</p>
+                            <p className="text-sm font-semibold text-foreground">{office.name}</p>
+                            <p className="text-sm text-muted-foreground">{office.address}, {office.city}, {office.state}{office.pincode ? ` - ${office.pincode}` : ""}</p>
+                            {office.mapsLink && <a href={office.mapsLink} target="_blank" rel="noreferrer" className="mt-0.5 text-xs text-brand-500 hover:underline">📍 View on Maps</a>}
                           </div>
                         </div>
-                      ))}
+                      )) : (
+                        <p className="text-sm text-muted-foreground">No office locations listed yet. Clients can reach this lawyer via online consultation.</p>
+                      )}
                     </div>
                   ),
                 },
                 {
                   value: "faq",
                   label: "FAQ",
-                  content: extras.faqs.length > 0 ? (
-                    <Accordion items={extras.faqs.map((f, i) => ({ value: `faq-${i}`, question: f.question, answer: f.answer }))} />
+                  content: faqs.length > 0 ? (
+                    <Accordion items={faqs.map((f, i) => ({ value: `faq-${i}`, question: f.question, answer: f.answer }))} />
                   ) : (
                     <p className="text-sm text-muted-foreground">No frequently asked questions yet — feel free to ask directly via chat.</p>
                   ),

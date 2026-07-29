@@ -1,5 +1,5 @@
-import { useNavigate } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { LogOut, UserCircle, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -26,6 +26,25 @@ export function LawyerSettingsPage() {
         <h2 className="font-display text-xl font-bold text-foreground">Settings</h2>
         <p className="mt-1 text-sm text-muted-foreground">Manage your public profile and availability.</p>
       </div>
+
+      {/* ── Edit Full Profile Prompt ─────────────────────────── */}
+      <Link to="/lawyer/profile/edit" className="block">
+        <div className="group flex items-center justify-between rounded-xl border border-brand-500/30 bg-brand-500/5 p-5 transition-colors hover:bg-brand-500/10">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-500/15 text-brand-500">
+              <UserCircle className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="font-semibold text-foreground">Edit Your Full Profile</p>
+              <p className="text-xs text-muted-foreground">
+                Add education, career timeline, FAQs, office locations, gallery, and more.
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 text-brand-400 transition-transform group-hover:translate-x-0.5" />
+        </div>
+      </Link>
+
       <Card>
         <CardHeader><CardTitle>Profile</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -58,6 +58,12 @@ export const getLawyerById = asyncHandler(async (request: FastifyRequest, reply:
     where: { id },
     include: {
       reviews: { orderBy: { createdAt: "desc" } },
+      education: { orderBy: { order: "asc" } },
+      timeline: { orderBy: { order: "asc" } },
+      courtMemberships: { orderBy: { order: "asc" } },
+      faqs: { orderBy: { order: "asc" } },
+      officeLocations: { orderBy: { order: "asc" } },
+      gallery: { orderBy: { order: "asc" } },
     },
   });
 

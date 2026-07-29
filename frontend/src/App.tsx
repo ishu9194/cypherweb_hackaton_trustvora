@@ -55,6 +55,7 @@ const LawyerAppointmentsPage = lazy(() => import("@/pages/dashboard/lawyer/Lawye
 const LawyerClientsPage = lazy(() => import("@/pages/dashboard/lawyer/LawyerClientsPage").then((m) => ({ default: m.LawyerClientsPage })));
 const LawyerAnalyticsPage = lazy(() => import("@/pages/dashboard/lawyer/LawyerAnalyticsPage").then((m) => ({ default: m.LawyerAnalyticsPage })));
 const LawyerSettingsPage = lazy(() => import("@/pages/dashboard/lawyer/LawyerSettingsPage").then((m) => ({ default: m.LawyerSettingsPage })));
+const LawyerProfileEditorPage = lazy(() => import("@/pages/dashboard/lawyer/LawyerProfileEditorPage").then((m) => ({ default: m.LawyerProfileEditorPage })));
 const LawyerCasesPage = lazy(() => import("@/pages/dashboard/lawyer/LawyerCasesPage").then((m) => ({ default: m.LawyerCasesPage })));
 const LawyerMessagesPage = lazy(() => import("@/pages/dashboard/lawyer/LawyerMessagesPage").then((m) => ({ default: m.LawyerMessagesPage })));
 const LawyerPaymentsPage = lazy(() => import("@/pages/dashboard/lawyer/LawyerPaymentsPage").then((m) => ({ default: m.LawyerPaymentsPage })));
@@ -154,6 +155,7 @@ function AppRoutes() {
         <Route path={ROUTES.lawyerReviews} element={<LawyerReviewsPage />} />
         <Route path={ROUTES.lawyerAnalytics} element={<LawyerAnalyticsPage />} />
         <Route path={ROUTES.lawyerSettings} element={<LawyerSettingsPage />} />
+        <Route path="/lawyer/profile/edit" element={<LawyerProfileEditorPage />} />
       </Route>
 
       {/* Admin panel */}

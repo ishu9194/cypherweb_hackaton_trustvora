@@ -13,6 +13,62 @@ export type AppointmentStatus = "upcoming" | "completed" | "cancelled" | "pendin
 
 export type LawyerGender = "male" | "female" | "other";
 
+// ─── Rich profile related entities (live from DB) ─────────────────────────────
+export interface LawyerEducationDB {
+  id: string;
+  lawyerId: string;
+  degree: string;
+  institution: string;
+  year: number;
+  order: number;
+}
+
+export interface LawyerTimelineDB {
+  id: string;
+  lawyerId: string;
+  year: string;
+  title: string;
+  description: string;
+  order: number;
+}
+
+export interface LawyerCourtMembershipDB {
+  id: string;
+  lawyerId: string;
+  courtName: string;
+  since: number;
+  order: number;
+}
+
+export interface LawyerFAQDB {
+  id: string;
+  lawyerId: string;
+  question: string;
+  answer: string;
+  order: number;
+}
+
+export interface LawyerOfficeDB {
+  id: string;
+  lawyerId: string;
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode?: string;
+  mapsLink?: string;
+  order: number;
+}
+
+export interface LawyerGalleryImageDB {
+  id: string;
+  lawyerId: string;
+  url: string;
+  caption?: string;
+  type: "photo" | "certificate" | "office";
+  order: number;
+}
+
 export interface Lawyer {
   id: string;
   name: string;
@@ -36,8 +92,31 @@ export interface Lawyer {
   casesWon: number;
   successRate: number;
   joinedAt: string; // ISO
+
+  // Extended profile fields (optional — may be null for older/seed lawyers)
+  title?: string | null;
+  subtitle?: string | null;
+  barNumber?: string | null;
+  barCouncilName?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  website?: string | null;
+  linkedin?: string | null;
+  onlineConsultation?: boolean;
+  offlineConsultation?: boolean;
+  workingDays?: string | null;
+  workingHours?: string | null;
+
+  // Rich profile relations (populated on the public profile page)
   reviews?: Review[];
+  education?: LawyerEducationDB[];
+  timeline?: LawyerTimelineDB[];
+  courtMemberships?: LawyerCourtMembershipDB[];
+  faqs?: LawyerFAQDB[];
+  officeLocations?: LawyerOfficeDB[];
+  gallery?: LawyerGalleryImageDB[];
 }
+
 
 export interface PracticeArea {
   id: string;
