@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Briefcase, Calendar, FileText, MessageSquare, Plus, StickyNote, X } from "lucide-react";
+import { AlertTriangle, Briefcase, Calendar, Check, FileText, MessageSquare, Plus, StickyNote, Trash2, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -107,6 +107,32 @@ export function CasesPage() {
       toast.error(err.message || "Failed to open case");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteCase = async (legalCase: any) => {
+    if (!legalCase.lawyerId) {
+      if (!window.confirm("Are you sure you want to delete this unassigned case?")) return;
+    } else {
+      if (!window.confirm("Request deletion for this assigned case? The assigned lawyer must also accept.")) return;
+    }
+
+    try {
+      const res = await dashboardService.deleteCase(legalCase.id);
+      toast.success(res?.message || "Case deletion processed successfully");
+      refetch();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to process deletion");
+    }
+  };
+
+  const handleRespondDeletion = async (caseId: string, action: "approve" | "reject") => {
+    try {
+      const res = await dashboardService.respondCaseDeletion(caseId, action);
+      toast.success(res?.message || "Deletion request updated");
+      refetch();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to respond");
     }
   };
 
@@ -256,8 +282,39 @@ export function CasesPage() {
                           >
                             Save Note
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => handleDeleteCase(legalCase)}
+                            disabled={legalCase.deletionRequestedBy === "client"}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            {!legalCase.lawyerId ? "Delete Case" : legalCase.deletionRequestedBy === "client" ? "Deletion Pending" : "Request Deletion"}
+                          </Button>
                         </div>
                       </div>
+                    </div>
+                  )}
+
+                  {legalCase.deletionRequestedBy === "lawyer" && (
+                    <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs dark:bg-amber-500/10 dark:border-amber-500/20 flex items-center justify-between flex-wrap gap-2">
+                      <span className="flex items-center gap-1.5 text-amber-800 dark:text-amber-300 font-medium">
+                        <AlertTriangle className="h-4 w-4 shrink-0" /> Assigned lawyer has requested to delete this case. Do you accept?
+                      </span>
+                      <div className="flex gap-2">
+                        <Button size="xs" variant="danger" onClick={() => handleRespondDeletion(legalCase.id, "approve")}>
+                          <Check className="h-3 w-3" /> Approve & Delete
+                        </Button>
+                        <Button size="xs" variant="outline" onClick={() => handleRespondDeletion(legalCase.id, "reject")}>
+                          <X className="h-3 w-3" /> Reject
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {legalCase.deletionRequestedBy === "client" && (
+                    <div className="mt-3 rounded-lg border border-brand-200 bg-brand-50 p-2.5 text-xs text-brand-800 dark:bg-brand-500/10 dark:text-brand-300 flex items-center justify-between">
+                      <span>Deletion request submitted. Awaiting assigned lawyer approval.</span>
                     </div>
                   )}
                 </CardContent>

@@ -31,7 +31,6 @@ export const createCase = asyncHandler(async (req: FastifyRequest, reply: Fastif
   if (!description?.trim()) throw new HttpError(400, "Description is required");
   if (!practiceArea?.trim()) throw new HttpError(400, "Practice area is required");
 
-  // Validate lawyerId if provided
   if (lawyerId) {
     const lawyer = await prisma.lawyer.findUnique({ where: { id: lawyerId } });
     if (!lawyer) throw new HttpError(404, "Lawyer not found");
@@ -62,6 +61,7 @@ export const createCase = asyncHandler(async (req: FastifyRequest, reply: Fastif
       progress: lawyerId ? 30 : 10,
       lawyerName: newCase.lawyer?.name ?? null,
       lawyerAvatarUrl: newCase.lawyer?.avatarUrl ?? null,
+      deletionRequestedBy: null,
       createdAt: newCase.createdAt.toISOString(),
       updatedAt: newCase.updatedAt.toISOString(),
     },
@@ -77,7 +77,7 @@ export const getClientCases = asyncHandler(async (req: FastifyRequest, reply: Fa
   const cases = await prisma.case.findMany({
     where: { clientId: userId },
     include: {
-      lawyer: { select: { name: true, avatarUrl: true } },
+      lawyer: { select: { id: true, name: true, avatarUrl: true } },
       documents: { select: { id: true, name: true, sizeLabel: true, url: true, category: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -98,15 +98,81 @@ export const getClientCases = asyncHandler(async (req: FastifyRequest, reply: Fa
     status: mapStatus(c.status),
     priority: c.priority,
     progress: progressMap[c.status] ?? 0,
+    lawyerId: c.lawyerId,
     lawyerName: c.lawyer?.name ?? null,
     lawyerAvatarUrl: c.lawyer?.avatarUrl ?? null,
     notes: c.notes ?? "",
+    deletionRequestedBy: c.deletionRequestedBy ?? null,
     documents: c.documents,
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
   }));
 
   return reply.send({ success: true, data });
+});
+
+/** DELETE /dashboard/cases/:id — Client deletes or requests deletion of a case */
+export const deleteClientCase = asyncHandler(async (req: FastifyRequest, reply: FastifyReply) => {
+  const userPayload = req.user as any;
+  const userId = userPayload?.sub || userPayload?.id;
+  if (!userId) throw new HttpError(401, "Unauthorized");
+
+  const { id } = req.params as { id: string };
+
+  const existing = await prisma.case.findFirst({ where: { id, clientId: userId } });
+  if (!existing) throw new HttpError(404, "Case not found");
+
+  // Rule 1: If no lawyer is assigned, client can delete directly
+  if (!existing.lawyerId) {
+    await prisma.case.delete({ where: { id } });
+    return reply.send({ success: true, data: { deleted: true, message: "Case deleted successfully" } });
+  }
+
+  // Rule 2: If lawyer is assigned, deletion requires mutual acceptance
+  if (existing.deletionRequestedBy === "lawyer") {
+    // Lawyer had already requested deletion -> Mutual agreement reached -> Delete now!
+    await prisma.case.delete({ where: { id } });
+    return reply.send({ success: true, data: { deleted: true, message: "Case deletion approved and removed permanently" } });
+  }
+
+  // Set deletionRequestedBy = "client"
+  await prisma.case.update({
+    where: { id },
+    data: { deletionRequestedBy: "client" },
+  });
+
+  return reply.send({
+    success: true,
+    data: {
+      deleted: false,
+      message: "Deletion request submitted. Awaiting assigned lawyer approval.",
+    },
+  });
+});
+
+/** POST /dashboard/cases/:id/deletion-response — Client approves or rejects lawyer's deletion request */
+export const clientRespondDeletion = asyncHandler(async (req: FastifyRequest, reply: FastifyReply) => {
+  const userPayload = req.user as any;
+  const userId = userPayload?.sub || userPayload?.id;
+  if (!userId) throw new HttpError(401, "Unauthorized");
+
+  const { id } = req.params as { id: string };
+  const { action } = req.body as { action: "approve" | "reject" };
+
+  const existing = await prisma.case.findFirst({ where: { id, clientId: userId } });
+  if (!existing) throw new HttpError(404, "Case not found");
+
+  if (action === "approve") {
+    await prisma.case.delete({ where: { id } });
+    return reply.send({ success: true, data: { deleted: true, message: "Case deleted permanently upon mutual approval." } });
+  }
+
+  await prisma.case.update({
+    where: { id },
+    data: { deletionRequestedBy: null },
+  });
+
+  return reply.send({ success: true, data: { deleted: false, message: "Case deletion request rejected." } });
 });
 
 /** PATCH /dashboard/cases/:id/notes — Client saves notes for a case */
@@ -154,12 +220,76 @@ export const getLawyerCases = asyncHandler(async (req: FastifyRequest, reply: Fa
     status: mapStatus(c.status),
     priority: c.priority,
     clientName: c.client.name,
+    deletionRequestedBy: c.deletionRequestedBy ?? null,
     documentCount: c.documents.length,
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
   }));
 
   return reply.send({ success: true, data });
+});
+
+/** DELETE /lawyer-dashboard/cases/:id — Lawyer requests or approves case deletion */
+export const deleteLawyerCase = asyncHandler(async (req: FastifyRequest, reply: FastifyReply) => {
+  const userPayload = req.user as any;
+  const userId = userPayload?.sub || userPayload?.id;
+  if (!userId) throw new HttpError(401, "Unauthorized");
+
+  const { id } = req.params as { id: string };
+
+  const lawyer = await prisma.lawyer.findUnique({ where: { userId } });
+  if (!lawyer) throw new HttpError(403, "Lawyer profile not found");
+
+  const existing = await prisma.case.findFirst({ where: { id, lawyerId: lawyer.id } });
+  if (!existing) throw new HttpError(404, "Case not found");
+
+  if (existing.deletionRequestedBy === "client") {
+    // Client had already requested deletion -> Mutual agreement reached -> Delete now!
+    await prisma.case.delete({ where: { id } });
+    return reply.send({ success: true, data: { deleted: true, message: "Case deletion approved and removed permanently" } });
+  }
+
+  // Set deletionRequestedBy = "lawyer"
+  await prisma.case.update({
+    where: { id },
+    data: { deletionRequestedBy: "lawyer" },
+  });
+
+  return reply.send({
+    success: true,
+    data: {
+      deleted: false,
+      message: "Deletion request submitted. Awaiting client approval.",
+    },
+  });
+});
+
+/** POST /lawyer-dashboard/cases/:id/deletion-response — Lawyer approves or rejects client's deletion request */
+export const lawyerRespondDeletion = asyncHandler(async (req: FastifyRequest, reply: FastifyReply) => {
+  const userPayload = req.user as any;
+  const userId = userPayload?.sub || userPayload?.id;
+  if (!userId) throw new HttpError(401, "Unauthorized");
+
+  const { id } = req.params as { id: string };
+  const { action } = req.body as { action: "approve" | "reject" };
+
+  const lawyer = await prisma.lawyer.findUnique({ where: { userId } });
+  if (!lawyer) throw new HttpError(403, "Lawyer profile not found");
+
+  const existing = await prisma.case.findFirst({ where: { id, lawyerId: lawyer.id } });
+  if (!existing) throw new HttpError(404, "Case not found");
+
+  if (action === "approve") {
+    await prisma.case.delete({ where: { id } });
+    return reply.send({ success: true, data: { deleted: true, message: "Case deleted permanently upon mutual approval." } });
+  }
+
+  await prisma.case.update({
+    where: { id },
+    data: { deletionRequestedBy: null },
+  });
+
+  return reply.send({ success: true, data: { deleted: false, message: "Case deletion request rejected." } });
 });
 
 /** GET /lawyer-dashboard/cases/unassigned — Lawyer views open cases pool to claim */
@@ -256,6 +386,7 @@ export const getAllCases = asyncHandler(async (_req: FastifyRequest, reply: Fast
     client: c.client.name,
     lawyer: c.lawyer?.name ?? "Unassigned",
     lawyerId: c.lawyerId ?? null,
+    deletionRequestedBy: c.deletionRequestedBy ?? null,
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
   }));

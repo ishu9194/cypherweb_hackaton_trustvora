@@ -11,11 +11,13 @@ import {
   toggleSaveLawyer,
   uploadDocument,
 } from "../controllers/dashboard.controller.js";
-import { createCase, getClientCases, updateCaseNotes } from "../controllers/cases.controller.js";
+import { clientRespondDeletion, createCase, deleteClientCase, getClientCases, updateCaseNotes } from "../controllers/cases.controller.js";
 
 export async function dashboardRoutes(fastify: FastifyInstance) {
   fastify.get("/cases", { onRequest: [fastify.authenticate] }, getClientCases);
   fastify.post("/cases", { onRequest: [fastify.authenticate] }, createCase);
+  fastify.delete("/cases/:id", { onRequest: [fastify.authenticate] }, deleteClientCase);
+  fastify.post("/cases/:id/deletion-response", { onRequest: [fastify.authenticate] }, clientRespondDeletion);
   fastify.patch("/cases/:id/notes", { onRequest: [fastify.authenticate] }, updateCaseNotes);
   fastify.get("/documents", { onRequest: [fastify.authenticate] }, getDocuments);
   fastify.post("/documents", { onRequest: [fastify.authenticate] }, uploadDocument);

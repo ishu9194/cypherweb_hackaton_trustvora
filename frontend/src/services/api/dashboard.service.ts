@@ -85,11 +85,43 @@ export const dashboardService = {
     }
   },
 
+  async deleteCase(id: string): Promise<{ success: boolean; deleted: boolean; message: string }> {
+    try {
+      return await apiClient.delete<{ success: boolean; deleted: boolean; message: string }>(`/dashboard/cases/${id}`);
+    } catch (err: any) {
+      return { success: false, deleted: false, message: err.message || "Failed to delete case" };
+    }
+  },
+
+  async respondCaseDeletion(id: string, action: "approve" | "reject"): Promise<{ success: boolean; deleted: boolean; message: string }> {
+    try {
+      return await apiClient.post<{ success: boolean; deleted: boolean; message: string }>(`/dashboard/cases/${id}/deletion-response`, { action });
+    } catch (err: any) {
+      return { success: false, deleted: false, message: err.message || "Failed to process response" };
+    }
+  },
+
   async getLawyerCases(): Promise<any[]> {
     try {
       return await apiClient.get<any[]>("/lawyer-dashboard/cases");
     } catch {
       return [];
+    }
+  },
+
+  async deleteLawyerCase(id: string): Promise<{ success: boolean; deleted: boolean; message: string }> {
+    try {
+      return await apiClient.delete<{ success: boolean; deleted: boolean; message: string }>(`/lawyer-dashboard/cases/${id}`);
+    } catch (err: any) {
+      return { success: false, deleted: false, message: err.message || "Failed to delete case" };
+    }
+  },
+
+  async respondLawyerCaseDeletion(id: string, action: "approve" | "reject"): Promise<{ success: boolean; deleted: boolean; message: string }> {
+    try {
+      return await apiClient.post<{ success: boolean; deleted: boolean; message: string }>(`/lawyer-dashboard/cases/${id}/deletion-response`, { action });
+    } catch (err: any) {
+      return { success: false, deleted: false, message: err.message || "Failed to process response" };
     }
   },
 

@@ -54,14 +54,26 @@ fastify.decorate("authorizeAdmin", async (request: FastifyRequest, reply: Fastif
 });
 
 
+// Handle application/json gracefully (including empty bodies)
+fastify.addContentTypeParser("application/json", { parseAs: "string" }, (_req, body, done) => {
+  try {
+    const json = body ? JSON.parse(body as string) : {};
+    done(null, json);
+  } catch (err: any) {
+    done(err, undefined);
+  }
+});
+
 // Global error handler
-fastify.setErrorHandler((error: any, request, reply) => {
+fastify.setErrorHandler((error: any, _request, reply) => {
   if (error.name === "ZodError") {
     return reply.status(400).send({ success: false, error: error.message });
   }
 
-  fastify.log.error(error);
-  return reply.status(500).send({ success: false, error: "Internal server error" });
+  const statusCode = error.statusCode || error.status || 500;
+  const message = error.message || "Internal server error";
+
+  return reply.status(statusCode).send({ success: false, error: message });
 });
 
 // Register API Routes for both /api and /api/v1 prefixes

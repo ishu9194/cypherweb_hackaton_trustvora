@@ -323,10 +323,11 @@ model Case {
   practiceArea String
   status       CaseStatus   @default(open)
   priority     CasePriority @default(medium)
-  notes        String?
-  documents    Document[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  notes                String?
+  deletionRequestedBy  String?      // "client" | "lawyer" | null
+  documents            Document[]
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
 
   @@index([clientId])
   @@index([lawyerId])

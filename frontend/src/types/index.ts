@@ -150,9 +150,11 @@ export interface LegalCase {
   status: CaseStatus;
   priority?: "low" | "medium" | "high";
   progress: number; // 0-100
+  lawyerId?: string | null;
   lawyerName?: string | null;
   lawyerAvatarUrl?: string | null;
   notes?: string;
+  deletionRequestedBy?: "client" | "lawyer" | null;
   documents?: { id: string; name: string; sizeLabel: string; url?: string; category: string }[];
   createdAt?: string;
   updatedAt: string;

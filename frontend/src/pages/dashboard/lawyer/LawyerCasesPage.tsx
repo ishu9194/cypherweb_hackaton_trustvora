@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Briefcase, Calendar, CheckCircle2, MoreHorizontal, UserPlus } from "lucide-react";
+import { AlertTriangle, Briefcase, Calendar, Check, CheckCircle2, MoreHorizontal, Trash2, UserPlus, X } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ interface KanbanCase {
   practiceArea: string;
   status: "open" | "in-progress" | "closed";
   priority?: string;
+  deletionRequestedBy?: "client" | "lawyer" | null;
   nextHearing?: string;
   updatedAt: string;
 }
@@ -51,6 +52,7 @@ export function LawyerCasesPage() {
           practiceArea: c.practiceArea,
           status: c.status === "in_progress" ? "in-progress" : c.status === "resolved" ? "closed" : c.status,
           priority: c.priority,
+          deletionRequestedBy: c.deletionRequestedBy ?? null,
           updatedAt: c.updatedAt,
         }))
       );
@@ -103,6 +105,27 @@ export function LawyerCasesPage() {
       toast.error("Failed to claim case");
     } finally {
       setClaimingId(null);
+    }
+  };
+
+  const handleDeleteLawyerCase = async (legalCase: any) => {
+    if (!window.confirm("Request case deletion? The client must also approve before permanent removal.")) return;
+    try {
+      const res = await dashboardService.deleteLawyerCase(legalCase.id);
+      toast.success(res?.message || "Deletion request submitted");
+      fetchCases();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to request deletion");
+    }
+  };
+
+  const handleRespondLawyerDeletion = async (caseId: string, action: "approve" | "reject") => {
+    try {
+      const res = await dashboardService.respondLawyerCaseDeletion(caseId, action);
+      toast.success(res?.message || "Deletion request updated");
+      fetchCases();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to respond");
     }
   };
 
@@ -172,10 +195,16 @@ export function LawyerCasesPage() {
                               <MoreHorizontal className="h-4 w-4" />
                             </button>
                           }
-                          items={COLUMNS.filter((c) => c.status !== legalCase.status).map((c) => ({
-                            label: `Move to ${c.label}`,
-                            onSelect: () => moveCase(legalCase.id, c.status),
-                          }))}
+                          items={[
+                            ...COLUMNS.filter((c) => c.status !== legalCase.status).map((c) => ({
+                              label: `Move to ${c.label}`,
+                              onSelect: () => moveCase(legalCase.id, c.status),
+                            })),
+                            {
+                              label: legalCase.deletionRequestedBy === "lawyer" ? "Deletion Pending" : "Request Deletion",
+                              onSelect: () => handleDeleteLawyerCase(legalCase),
+                            },
+                          ]}
                         />
                       </div>
                       <p className="mt-3 text-sm font-semibold text-foreground">{legalCase.title}</p>
@@ -194,6 +223,28 @@ export function LawyerCasesPage() {
                           </Badge>
                         )}
                       </div>
+
+                      {legalCase.deletionRequestedBy === "client" && (
+                        <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-xs dark:bg-amber-500/10 dark:border-amber-500/20">
+                          <p className="font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1">
+                            <AlertTriangle className="h-3.5 w-3.5" /> Client requested to delete case.
+                          </p>
+                          <div className="mt-2 flex gap-1.5 justify-end">
+                            <Button size="xs" variant="danger" onClick={() => handleRespondLawyerDeletion(legalCase.id, "approve")}>
+                              <Check className="h-3 w-3" /> Approve
+                            </Button>
+                            <Button size="xs" variant="outline" onClick={() => handleRespondLawyerDeletion(legalCase.id, "reject")}>
+                              <X className="h-3 w-3" /> Reject
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {legalCase.deletionRequestedBy === "lawyer" && (
+                        <div className="mt-3 rounded-lg border border-brand-200 bg-brand-50 p-2 text-[11px] text-brand-800 dark:bg-brand-500/10 dark:text-brand-300">
+                          Deletion requested. Awaiting client approval.
+                        </div>
+                      )}
                     </motion.div>
                   ))}
                   {columnCases.length === 0 && <p className="py-6 text-center text-xs text-muted-foreground">No cases in this column</p>}
