@@ -16,7 +16,7 @@ import {
   updateTicketStatus,
   verifyLawyer,
 } from "../controllers/admin.controller.js";
-import { adminUpdateCaseStatus, getAllCases } from "../controllers/cases.controller.js";
+import { adminAssignCase, adminUpdateCaseStatus, getAllCases } from "../controllers/cases.controller.js";
 
 export async function adminRoutes(fastify: FastifyInstance) {
   const authOpt = { onRequest: [(fastify as any).authorizeAdmin || fastify.authenticate] };
@@ -25,6 +25,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
   fastify.get("/stats", authOpt, getStats);
   fastify.get("/revenue", authOpt, getRevenue);
   fastify.get("/cases", authOpt, getAllCases);
+  fastify.patch("/cases/:id/assign", authOpt, adminAssignCase);
   fastify.patch("/cases/:id/status", authOpt, adminUpdateCaseStatus);
   fastify.get("/clients", authOpt, getClients);
   fastify.patch("/clients/:id/status", authOpt, updateClientStatus);

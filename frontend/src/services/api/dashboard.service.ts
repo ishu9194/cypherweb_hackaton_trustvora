@@ -93,6 +93,23 @@ export const dashboardService = {
     }
   },
 
+  async getUnassignedCases(): Promise<any[]> {
+    try {
+      return await apiClient.get<any[]>("/lawyer-dashboard/cases/unassigned");
+    } catch {
+      return [];
+    }
+  },
+
+  async claimCase(id: string): Promise<boolean> {
+    try {
+      await apiClient.patch(`/lawyer-dashboard/cases/${id}/claim`);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
   async updateLawyerCaseStatus(id: string, status: string): Promise<boolean> {
     try {
       await apiClient.patch(`/lawyer-dashboard/cases/${id}/status`, { status });

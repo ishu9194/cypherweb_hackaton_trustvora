@@ -55,10 +55,27 @@ export function CasesPage() {
   const [practiceArea, setPracticeArea] = useState("Startup Law");
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
   const [description, setDescription] = useState("");
+  const [selectedLawyerId, setSelectedLawyerId] = useState<string>("unassigned");
+  const [lawyerOptions, setLawyerOptions] = useState<{ value: string; label: string }[]>([
+    { value: "unassigned", label: "Open to All Lawyers (Post in Pool)" },
+  ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const casesList = cases ?? [];
   const docsList = documents ?? [];
+
+  useEffect(() => {
+    import("@/services/api/lawyers.service").then(({ lawyersService }) => {
+      lawyersService.list({ pageSize: 50 }).then((res) => {
+        if (res?.lawyers && res.lawyers.length > 0) {
+          setLawyerOptions([
+            { value: "unassigned", label: "Open to All Lawyers (Post in Pool)" },
+            ...res.lawyers.map((l) => ({ value: l.id, label: `${l.name} (${l.city})` })),
+          ]);
+        }
+      });
+    });
+  }, []);
 
   const handleOpenCase = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,11 +95,13 @@ export function CasesPage() {
         practiceArea,
         priority,
         description: description.trim(),
+        lawyerId: selectedLawyerId !== "unassigned" ? selectedLawyerId : undefined,
       });
       toast.success("New case opened successfully!");
       setIsModalOpen(false);
       setTitle("");
       setDescription("");
+      setSelectedLawyerId("unassigned");
       refetch();
     } catch (err: any) {
       toast.error(err.message || "Failed to open case");
@@ -291,6 +310,15 @@ export function CasesPage() {
                     onValueChange={(v) => setPriority(v as any)}
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">Assign to Preferred Lawyer (Optional)</label>
+                <Select
+                  options={lawyerOptions}
+                  value={selectedLawyerId}
+                  onValueChange={setSelectedLawyerId}
+                />
               </div>
 
               <div>
