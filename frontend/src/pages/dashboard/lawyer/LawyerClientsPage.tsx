@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ROUTES } from "@/constants/app.constants";
+import { ROUTES } from "@/constants/routes.constants";
 import { lawyerDashboardService } from "@/services/api/lawyerDashboard.service";
 
 interface RosterClient {
