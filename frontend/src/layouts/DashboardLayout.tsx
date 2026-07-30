@@ -25,6 +25,7 @@ export function DashboardLayout({ variant = "client", title }: DashboardLayoutPr
 
   const dashboardHref = variant === "lawyer" ? ROUTES.lawyerDashboard : variant === "admin" ? ROUTES.adminDashboard : ROUTES.clientDashboard;
   const settingsHref = variant === "lawyer" ? ROUTES.lawyerSettings : ROUTES.clientSettings;
+  const notificationsHref = variant === "lawyer" ? ROUTES.lawyerNotifications : variant === "admin" ? ROUTES.adminNotifications : ROUTES.clientNotifications;
   const links = variant === "lawyer" ? LAWYER_LINKS : variant === "admin" ? ADMIN_LINKS : CLIENT_LINKS;
 
   const handleLogout = async () => {
@@ -62,7 +63,7 @@ export function DashboardLayout({ variant = "client", title }: DashboardLayoutPr
             <button
               type="button"
               aria-label="Notifications"
-              onClick={() => navigate(ROUTES.clientNotifications)}
+              onClick={() => navigate(notificationsHref)}
               className="relative flex h-10 w-10 items-center justify-center rounded-full text-foreground transition-colors hover:bg-surface-sunken"
             >
               <Bell className="h-4.5 w-4.5" />

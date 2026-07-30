@@ -38,10 +38,22 @@ export function LoginPage() {
 
   const onSubmit = async (values: LoginFormValues) => {
     try {
-      await login(values.email, values.password);
+      const loggedInUser = await login(values.email, values.password);
       toast.success("Welcome back!");
-      const redirectTo = (location.state as { from?: Location })?.from?.pathname;
-      navigate(redirectTo || ROUTES.home);
+      // Support both PrivateRoute (state.redirectTo) and legacy (state.from.pathname)
+      const state = location.state as { redirectTo?: string; from?: { pathname?: string } } | null;
+      const redirectTo = state?.redirectTo || state?.from?.pathname;
+      if (redirectTo && redirectTo !== ROUTES.login) {
+        navigate(redirectTo, { replace: true });
+      } else {
+        const dashboard =
+          loggedInUser.role === "lawyer"
+            ? ROUTES.lawyerDashboard
+            : loggedInUser.role === "admin"
+            ? ROUTES.adminDashboard
+            : ROUTES.clientDashboard;
+        navigate(dashboard, { replace: true });
+      }
     } catch {
       toast.error("Couldn't log you in. Check your details and try again.");
     }

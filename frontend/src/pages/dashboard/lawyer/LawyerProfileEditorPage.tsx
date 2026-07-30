@@ -412,17 +412,27 @@ export function LawyerProfileEditorPage() {
               </div>
               <div className="flex-1 space-y-1">
                 <p className="text-sm font-semibold text-foreground">Profile Picture</p>
-                <p className="text-xs text-muted-foreground">Upload a photo to Supabase storage (`profile-image` bucket).</p>
+                <p className="text-xs text-muted-foreground">
+                  Allowed formats: <strong className="text-foreground font-medium">JPG, PNG, WEBP, GIF</strong> (Max 5MB). Uploads to `profile-image` bucket.
+                </p>
                 <div className="flex items-center gap-2 pt-1">
                   <label className="cursor-pointer rounded-lg bg-brand-500/10 px-3 py-1.5 text-xs font-medium text-brand-600 transition-colors hover:bg-brand-500/20">
                     <span>📷 Upload Photo</span>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
                       className="hidden"
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
+                        if (!file.type.startsWith("image/")) {
+                          toast.error("Invalid file type. Please select an image (JPG, PNG, WEBP, GIF).");
+                          return;
+                        }
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast.error("File size too large. Maximum allowed size is 5MB.");
+                          return;
+                        }
                         try {
                           toast.loading("Uploading photo to Supabase...");
                           const { uploadToSupabase, BUCKETS } = await import("@/lib/supabase");
@@ -688,7 +698,12 @@ export function LawyerProfileEditorPage() {
               </div>
             )}
             <div className="rounded-lg border border-dashed border-border p-4 space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Add Image</p>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Add Image</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Allowed image types: <strong className="text-foreground font-medium">JPG, PNG, WEBP, GIF</strong> (Max 5MB per file).
+                </p>
+              </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <Input label="Image URL *" placeholder="https://example.com/photo.jpg" value={newGallery.url} onChange={(e) => setNewGallery((p) => ({ ...p, url: e.target.value }))} className="flex-1" />
                 <div className="mt-5 shrink-0">
@@ -696,11 +711,19 @@ export function LawyerProfileEditorPage() {
                     <span>📁 Upload Image File</span>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
                       className="hidden"
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
+                        if (!file.type.startsWith("image/")) {
+                          toast.error("Invalid file type. Please select an image (JPG, PNG, WEBP, GIF).");
+                          return;
+                        }
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast.error("File size too large. Maximum allowed size is 5MB.");
+                          return;
+                        }
                         try {
                           toast.loading("Uploading image to Supabase...");
                           const { uploadToSupabase, BUCKETS } = await import("@/lib/supabase");

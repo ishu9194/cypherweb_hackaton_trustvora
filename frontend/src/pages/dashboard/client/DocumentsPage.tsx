@@ -112,7 +112,8 @@ export function DocumentsPage() {
       >
         <Upload className="h-7 w-7 text-brand-600" />
         <p className="mt-2 text-sm font-medium text-foreground">Drag & drop files, or click to browse</p>
-        <input type="file" multiple className="hidden" onChange={(e) => e.target.files && addFiles(e.target.files)} />
+        <p className="mt-1 text-xs text-muted-foreground">Supported formats: <strong className="text-foreground font-medium">PDF, DOC, DOCX, TXT, JPG, PNG</strong> (Max 10MB)</p>
+        <input type="file" multiple accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png" className="hidden" onChange={(e) => e.target.files && addFiles(e.target.files)} />
       </label>
 
       <div className="flex flex-col gap-3 sm:flex-row">

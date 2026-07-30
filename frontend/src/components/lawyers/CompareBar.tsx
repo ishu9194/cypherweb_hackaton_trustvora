@@ -8,11 +8,13 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { MAX_COMPARE, useCompareStore } from "@/hooks/useCompareStore";
 import { ROUTES } from "@/constants/routes.constants";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 /** Sticky bottom bar showing lawyers queued for comparison. "Compare Now" routes to the full comparison page. */
 export function CompareBar() {
   const navigate = useNavigate();
   const { compareList, clearCompare } = useCompareStore();
+  const { requireAuth, isAuthenticated } = useAuthGuard();
   const [lawyers, setLawyers] = useState<Lawyer[]>([]);
 
   useEffect(() => {
@@ -35,7 +37,7 @@ export function CompareBar() {
 
   return (
     <AnimatePresence>
-      {lawyers.length > 0 && (
+      {lawyers.length > 0 && isAuthenticated && (
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -67,7 +69,7 @@ export function CompareBar() {
             </Button>
             <Button
               size="sm"
-              onClick={() => navigate(ROUTES.clientCompareLawyers)}
+              onClick={() => requireAuth(() => navigate(ROUTES.clientCompareLawyers), "Please log in to compare lawyers")}
               disabled={lawyers.length < 1}
             >
               <ScaleIcon className="h-3.5 w-3.5" />

@@ -1,6 +1,6 @@
 import { useCallback, useState, type Dispatch, type SetStateAction } from "react";
 import { motion } from "framer-motion";
-import { AlertCircle, File, Upload, X } from "lucide-react";
+import { AlertCircle, CheckCircle, File, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface UploadedDoc {
@@ -8,6 +8,8 @@ export interface UploadedDoc {
   name: string;
   sizeLabel: string;
   progress: number;
+  url?: string;
+  error?: string;
 }
 
 interface DocumentUploadStepProps {
@@ -33,7 +35,7 @@ export function DocumentUploadStep({ files, onFilesChange }: DocumentUploadStepP
   const [rejections, setRejections] = useState<string[]>([]);
 
   const addFiles = useCallback(
-    (fileList: FileList) => {
+    async (fileList: FileList) => {
       const incoming = Array.from(fileList);
       const accepted: File[] = [];
       const newRejections: string[] = [];
@@ -55,27 +57,41 @@ export function DocumentUploadStep({ files, onFilesChange }: DocumentUploadStepP
 
       if (accepted.length === 0) return;
 
-      const newDocs: UploadedDoc[] = accepted.map((file) => ({
-        id: `${file.name}-${Date.now()}-${Math.random()}`,
-        name: file.name,
-        sizeLabel: formatSize(file.size),
-        progress: 0,
-      }));
-      onFilesChange([...files, ...newDocs]);
+      for (const file of accepted) {
+        const docId = `${file.name}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        const initialDoc: UploadedDoc = {
+          id: docId,
+          name: file.name,
+          sizeLabel: formatSize(file.size),
+          progress: 10,
+        };
 
-      // Simulate an upload progress animation for each new file.
-      newDocs.forEach((doc) => {
-        let progress = 0;
-        const interval = setInterval(() => {
-          progress += 20 + Math.random() * 25;
-          onFilesChange((prevFiles: UploadedDoc[]) =>
-            prevFiles.map((f) => (f.id === doc.id ? { ...f, progress: Math.min(100, progress) } : f)),
+        onFilesChange((prev) => [...prev, initialDoc]);
+
+        try {
+          const { uploadToSupabase, BUCKETS } = await import("@/lib/supabase");
+          
+          // Animate progress up to 60%
+          onFilesChange((prev) =>
+            prev.map((f) => (f.id === docId ? { ...f, progress: 60 } : f))
           );
-          if (progress >= 100) clearInterval(interval);
-        }, 250);
-      });
+
+          const publicUrl = await uploadToSupabase(file, BUCKETS.DOCUMENTS, "booking-docs");
+
+          onFilesChange((prev) =>
+            prev.map((f) => (f.id === docId ? { ...f, progress: 100, url: publicUrl } : f))
+          );
+        } catch (err: any) {
+          console.warn("Supabase booking doc upload error:", err);
+          const errorMsg = err.message || "Upload failed";
+          onFilesChange((prev) =>
+            prev.map((f) => (f.id === docId ? { ...f, progress: 100, error: errorMsg } : f))
+          );
+          setRejections((prev) => [...prev, `${file.name} — ${errorMsg}`]);
+        }
+      }
     },
-    [files, onFilesChange],
+    [onFilesChange],
   );
 
   const removeFile = (id: string) => onFilesChange(files.filter((f) => f.id !== id));
@@ -126,21 +142,28 @@ export function DocumentUploadStep({ files, onFilesChange }: DocumentUploadStepP
               animate={{ opacity: 1, y: 0 }}
               className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/10">
-                <File className="h-4 w-4" />
+              <span className={cn(
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-brand-600 transition-colors",
+                file.url ? "bg-success/10 text-success" : file.error ? "bg-danger/10 text-danger" : "bg-brand-50 dark:bg-brand-500/10"
+              )}>
+                {file.url ? <CheckCircle className="h-4 w-4" /> : <File className="h-4 w-4" />}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">{file.name}</p>
+                <div className="flex items-center justify-between">
+                  <p className="truncate text-sm font-medium text-foreground">{file.name}</p>
+                  {file.url && <span className="text-[10px] font-semibold text-success uppercase tracking-wider">Uploaded</span>}
+                </div>
                 <div className="mt-1.5 flex items-center gap-2">
                   <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-sunken">
                     <motion.div
-                      className="h-full rounded-full bg-accent-500"
+                      className={cn("h-full rounded-full", file.error ? "bg-danger" : file.url ? "bg-success" : "bg-accent-500")}
                       animate={{ width: `${file.progress}%` }}
                       transition={{ duration: 0.2 }}
                     />
                   </div>
                   <span className="shrink-0 text-[11px] text-muted-foreground">{file.sizeLabel}</span>
                 </div>
+                {file.error && <p className="mt-1 text-[11px] text-danger">{file.error}</p>}
               </div>
               <button type="button" onClick={() => removeFile(file.id)} aria-label={`Remove ${file.name}`} className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-surface-sunken hover:text-danger">
                 <X className="h-4 w-4" />

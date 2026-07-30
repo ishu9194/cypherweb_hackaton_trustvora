@@ -30,6 +30,9 @@ export async function uploadToSupabase(
     });
 
   if (error) {
+    if (error.message.includes("row-level security") || error.message.includes("violates row-level security")) {
+      throw new Error(`Supabase RLS Policy Blocked: Enable an INSERT policy for bucket '${bucketName}' in your Supabase Dashboard (Storage -> Policies).`);
+    }
     throw new Error(`Upload failed: ${error.message}`);
   }
 

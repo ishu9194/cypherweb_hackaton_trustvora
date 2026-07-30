@@ -44,7 +44,6 @@ const FOOTER_COLUMNS: { title: string; links: { label: string; href: string }[] 
     links: [
       { label: "About Us", href: ROUTES.about },
       { label: "Careers", href: "/careers" },
-      { label: "Blog", href: ROUTES.blog },
       { label: "Contact", href: ROUTES.contact },
     ],
   },

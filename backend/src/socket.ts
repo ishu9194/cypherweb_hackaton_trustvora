@@ -182,7 +182,7 @@ export function setupSocketIO(fastify: FastifyInstance) {
           };
 
           const convRoom = `conversation_${conversationId}`;
-          io.to(convRoom).emit("receive_message", formattedMessage);
+          socket.to(convRoom).emit("receive_message", formattedMessage);
 
           if (receiverId) {
             io.to(`user_${receiverId}`).emit("receive_message", formattedMessage);

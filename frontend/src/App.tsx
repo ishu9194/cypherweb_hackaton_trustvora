@@ -13,6 +13,7 @@ import { ClientDashboardLayout, LawyerDashboardLayout, AdminDashboardLayout } fr
 
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { PublicRoute } from "@/routes/PublicRoute";
+import { PrivateRoute } from "@/routes/PrivateRoute";
 
 import { ROUTES } from "@/constants/routes.constants";
 
@@ -27,7 +28,6 @@ const PricingPage = lazy(() => import("@/pages/PricingPage").then((m) => ({ defa
 
 
 const ServicesPage = lazy(() => import("@/pages/ServicesPage").then((m) => ({ default: m.ServicesPage })));
-const BlogPage = lazy(() => import("@/pages/BlogPage").then((m) => ({ default: m.BlogPage })));
 const ContactPage = lazy(() => import("@/pages/ContactPage").then((m) => ({ default: m.ContactPage })));
 const PrivacyPolicyPage = lazy(() => import("@/pages/PrivacyPolicyPage").then((m) => ({ default: m.PrivacyPolicyPage })));
 const TermsConditionsPage = lazy(() => import("@/pages/TermsConditionsPage").then((m) => ({ default: m.TermsConditionsPage })));
@@ -88,16 +88,15 @@ function AppRoutes() {
         <Route path={ROUTES.services} element={<ServicesPage />} />
         <Route path={ROUTES.pricing} element={<PricingPage />} />
 
-        <Route path={ROUTES.blog} element={<BlogPage />} />
         <Route path={ROUTES.about} element={<AboutUsPage />} />
         <Route path={ROUTES.contact} element={<ContactPage />} />
         <Route path={ROUTES.privacyPolicy} element={<PrivacyPolicyPage />} />
         <Route path={ROUTES.termsConditions} element={<TermsConditionsPage />} />
         <Route path={ROUTES.lawyerProfile()} element={<LawyerProfilePage />} />
-        <Route path={ROUTES.bookingSuccess} element={<BookingSuccessPage />} />
-        <Route path={ROUTES.bookLawyer()} element={<BookingFlowPage />} />
-        <Route path="/book/:id" element={<BookingFlowPage />} />
-        <Route path="/lawyers/:id/book" element={<BookingFlowPage />} />
+        <Route path={ROUTES.bookingSuccess} element={<PrivateRoute><BookingSuccessPage /></PrivateRoute>} />
+        <Route path={ROUTES.bookLawyer()} element={<PrivateRoute><BookingFlowPage /></PrivateRoute>} />
+        <Route path="/book/:id" element={<PrivateRoute><BookingFlowPage /></PrivateRoute>} />
+        <Route path="/lawyers/:id/book" element={<PrivateRoute><BookingFlowPage /></PrivateRoute>} />
         <Route path={ROUTES.styleGuide} element={<StyleGuidePage />} />
       </Route>
 
@@ -154,6 +153,7 @@ function AppRoutes() {
         <Route path={ROUTES.lawyerPayments} element={<LawyerPaymentsPage />} />
         <Route path={ROUTES.lawyerReviews} element={<LawyerReviewsPage />} />
         <Route path={ROUTES.lawyerAnalytics} element={<LawyerAnalyticsPage />} />
+        <Route path={ROUTES.lawyerNotifications} element={<NotificationsPage />} />
         <Route path={ROUTES.lawyerSettings} element={<LawyerSettingsPage />} />
         <Route path="/lawyer/profile/edit" element={<LawyerProfileEditorPage />} />
       </Route>
@@ -173,6 +173,7 @@ function AppRoutes() {
         <Route path={ROUTES.adminPayments} element={<AdminPaymentsPage />} />
         <Route path={ROUTES.adminSupport} element={<AdminSupportTicketsPage />} />
         <Route path={ROUTES.adminReports} element={<AdminReportsPage />} />
+        <Route path={ROUTES.adminNotifications} element={<NotificationsPage />} />
       </Route>
 
       {/* System pages */}

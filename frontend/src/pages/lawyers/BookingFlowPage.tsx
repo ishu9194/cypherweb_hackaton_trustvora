@@ -139,6 +139,23 @@ export function BookingFlowPage() {
         fee,
       });
 
+      // Save uploaded booking documents to dashboard documents
+      for (const file of files) {
+        if (file.url) {
+          try {
+            const { dashboardService } = await import("@/services/api/dashboard.service");
+            await dashboardService.uploadDocument({
+              name: file.name,
+              category: "Correspondence",
+              sizeLabel: file.sizeLabel,
+              url: file.url,
+            });
+          } catch {
+            // Ignore optional document save error
+          }
+        }
+      }
+
       navigate(ROUTES.bookingSuccess, {
         state: {
           appointment,

@@ -62,6 +62,46 @@ export const dashboardService = {
     }
   },
 
+  async createCase(data: {
+    title: string;
+    description: string;
+    practiceArea: string;
+    priority?: "low" | "medium" | "high";
+    lawyerId?: string;
+  }): Promise<LegalCase | null> {
+    try {
+      return await apiClient.post<LegalCase>("/dashboard/cases", data);
+    } catch (err: any) {
+      throw new Error(err?.response?.data?.message || err.message || "Failed to create case");
+    }
+  },
+
+  async updateCaseNotes(id: string, notes: string): Promise<boolean> {
+    try {
+      await apiClient.patch(`/dashboard/cases/${id}/notes`, { notes });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  async getLawyerCases(): Promise<any[]> {
+    try {
+      return await apiClient.get<any[]>("/lawyer-dashboard/cases");
+    } catch {
+      return [];
+    }
+  },
+
+  async updateLawyerCaseStatus(id: string, status: string): Promise<boolean> {
+    try {
+      await apiClient.patch(`/lawyer-dashboard/cases/${id}/status`, { status });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
   async getDocuments(): Promise<DashboardDocument[]> {
     try {
       return await apiClient.get<DashboardDocument[]>("/dashboard/documents");

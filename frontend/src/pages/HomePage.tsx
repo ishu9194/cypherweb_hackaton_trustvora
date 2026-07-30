@@ -9,7 +9,6 @@ import { FeaturedLawyersSection } from "@/components/sections/FeaturedLawyersSec
 import { SuccessStoriesSection } from "@/components/sections/SuccessStoriesSection";
 import { TestimonialsSection } from "@/components/sections/TestimonialsSection";
 import { FAQSection } from "@/components/sections/FAQSection";
-import { BlogPreviewSection } from "@/components/sections/BlogPreviewSection";
 import { NewsletterSection } from "@/components/sections/NewsletterSection";
 import { ContactSection } from "@/components/sections/ContactSection";
 import { CTABannerSection } from "@/components/sections/CTABannerSection";
@@ -28,7 +27,6 @@ export function HomePage() {
       <SuccessStoriesSection />
       <TestimonialsSection />
       <FAQSection />
-      <BlogPreviewSection />
       <NewsletterSection />
       <ContactSection />
       <CTABannerSection />

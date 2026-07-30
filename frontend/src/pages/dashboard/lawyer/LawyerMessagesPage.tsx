@@ -57,13 +57,24 @@ export function LawyerMessagesPage() {
         setConversations((prev) =>
           prev.map((c) => {
             if (c.id === active.id) {
-              const exists = c.messages.some(
+              const incomingTime = new Date(newMsg.timestamp).getTime();
+
+              const existingIndex = c.messages.findIndex(
                 (m) =>
                   m.id === newMsg.id ||
-                  (m.text === newMsg.text &&
-                    Math.abs(new Date(m.timestamp).getTime() - new Date(newMsg.timestamp).getTime()) < 5000),
+                  (m.text.trim() === newMsg.text.trim() &&
+                    Math.abs(new Date(m.timestamp).getTime() - incomingTime) < 10000)
               );
-              if (exists) return c;
+
+              if (existingIndex !== -1) {
+                // Update optimistic message ID with actual DB ID without duplicating
+                const updatedMessages = [...c.messages];
+                updatedMessages[existingIndex] = {
+                  ...updatedMessages[existingIndex],
+                  id: newMsg.id,
+                };
+                return { ...c, messages: updatedMessages };
+              }
 
               return {
                 ...c,
@@ -132,16 +143,18 @@ export function LawyerMessagesPage() {
       ),
     );
 
-    // Real-Time Socket dispatch & database persistence
-    sendSocketMessage({
-      conversationId: active.id,
-      text: sentText,
-      content: sentText,
-      receiverId: active.clientId || active.id,
-      senderName: "Lawyer",
-    });
-
-    lawyerDashboardService.sendReply(active.id, sentText).catch(() => {});
+    const socket = getSocket();
+    if (socket.connected) {
+      sendSocketMessage({
+        conversationId: active.id,
+        text: sentText,
+        content: sentText,
+        receiverId: active.clientId || active.id,
+        senderName: "Lawyer",
+      });
+    } else {
+      lawyerDashboardService.sendReply(active.id, sentText).catch(() => {});
+    }
   };
 
   const addReaction = (messageId: string, emoji: string) => {

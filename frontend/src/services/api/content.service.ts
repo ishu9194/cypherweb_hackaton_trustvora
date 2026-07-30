@@ -1,18 +1,5 @@
 import { apiClient } from "./client";
 
-export interface BlogPost {
-  id: string;
-  title: string;
-  excerpt: string;
-  category: string;
-  author: string;
-  authorAvatarUrl?: string;
-  date: string;
-  readTimeMinutes: number;
-  coverGradient: string;
-  featured?: boolean;
-}
-
 export interface FaqItem {
   question: string;
   answer: string;
@@ -50,14 +37,6 @@ export interface TeamMemberItem {
 }
 
 export const contentService = {
-  async getBlogPosts(): Promise<BlogPost[]> {
-    try {
-      return await apiClient.get<BlogPost[]>("/content/blog");
-    } catch {
-      return [];
-    }
-  },
-
   async getServices(): Promise<ServiceItem[]> {
     try {
       return await apiClient.get<ServiceItem[]>("/content/services");

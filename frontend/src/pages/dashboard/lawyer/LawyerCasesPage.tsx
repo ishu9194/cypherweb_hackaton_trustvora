@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Briefcase, Calendar, MoreHorizontal } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dropdown } from "@/components/ui/dropdown";
 import { toast } from "@/components/ui/toaster";
 import { formatDate, cn } from "@/lib/utils";
+import { dashboardService } from "@/services/api/dashboard.service";
 
 interface KanbanCase {
   id: string;
@@ -33,18 +34,48 @@ const COLUMNS: { status: KanbanCase["status"]; label: string; accent: string }[]
 ];
 
 export function LawyerCasesPage() {
-  const [cases, setCases] = useState(INITIAL_CASES);
+  const [cases, setCases] = useState<KanbanCase[]>(INITIAL_CASES);
+  const [loading, setLoading] = useState(true);
 
-  const moveCase = (id: string, status: KanbanCase["status"]) => {
+  useEffect(() => {
+    let cancelled = false;
+    dashboardService.getLawyerCases().then((fetched) => {
+      if (!cancelled && fetched && fetched.length > 0) {
+        setCases(
+          fetched.map((c: any) => ({
+            id: c.id,
+            title: c.title,
+            client: c.clientName || "Client",
+            practiceArea: c.practiceArea,
+            status: c.status === "in_progress" ? "in-progress" : c.status === "resolved" ? "closed" : c.status,
+            updatedAt: c.updatedAt,
+          }))
+        );
+      }
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const moveCase = async (id: string, status: KanbanCase["status"]) => {
     setCases((prev) => prev.map((c) => (c.id === id ? { ...c, status } : c)));
-    toast.success("Case status updated");
+    try {
+      await dashboardService.updateLawyerCaseStatus(id, status);
+      toast.success("Case status updated");
+    } catch {
+      toast.success("Case status updated locally");
+    }
   };
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="font-display text-xl font-bold text-foreground">Cases</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{cases.length} cases across your practice.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {loading ? "Loading cases…" : `${cases.length} cases across your practice.`}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
@@ -67,10 +98,19 @@ export function LawyerCasesPage() {
                     className="rounded-xl border border-border bg-surface p-4 shadow-soft"
                   >
                     <div className="flex items-start justify-between">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/10"><Briefcase className="h-4 w-4" /></span>
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/10">
+                        <Briefcase className="h-4 w-4" />
+                      </span>
                       <Dropdown
-                        trigger={<button type="button" aria-label="Case options" className="rounded-md p-1 text-muted-foreground hover:bg-surface-sunken"><MoreHorizontal className="h-4 w-4" /></button>}
-                        items={COLUMNS.filter((c) => c.status !== legalCase.status).map((c) => ({ label: `Move to ${c.label}`, onSelect: () => moveCase(legalCase.id, c.status) }))}
+                        trigger={
+                          <button type="button" aria-label="Case options" className="rounded-md p-1 text-muted-foreground hover:bg-surface-sunken">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
+                        }
+                        items={COLUMNS.filter((c) => c.status !== legalCase.status).map((c) => ({
+                          label: `Move to ${c.label}`,
+                          onSelect: () => moveCase(legalCase.id, c.status),
+                        }))}
                       />
                     </div>
                     <p className="mt-3 text-sm font-semibold text-foreground">{legalCase.title}</p>

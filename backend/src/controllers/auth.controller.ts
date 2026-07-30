@@ -5,8 +5,8 @@ import { GoogleAuthSchema, LoginSchema, RegisterSchema } from "../schemas/auth.s
 import { asyncHandler, HttpError } from "../utils/asyncHandler.js";
 
 /** Fields safe to return to the client — never leak passwordHash. */
-function toPublicUser(user: { id: string; email: string | null; name: string; role: string; createdAt: Date }) {
-  return { id: user.id, email: user.email, name: user.name, role: user.role, createdAt: user.createdAt };
+function toPublicUser(user: { id: string; email: string | null; name: string; role: string; avatarUrl?: string | null; phone?: string | null; city?: string | null; createdAt: Date }) {
+  return { id: user.id, email: user.email, name: user.name, role: user.role, avatarUrl: user.avatarUrl ?? null, phone: user.phone ?? null, city: user.city ?? null, createdAt: user.createdAt };
 }
 
 export const register = asyncHandler(async (request: FastifyRequest, reply: FastifyReply) => {
@@ -108,10 +108,12 @@ export const me = asyncHandler(async (request: FastifyRequest, reply: FastifyRep
 
 export const updateProfile = asyncHandler(async (request: FastifyRequest, reply: FastifyReply) => {
   const { sub } = request.user as { sub: string };
-  const { name, bio, city, consultationFee } = request.body as {
+  const { name, avatarUrl, phone, city, bio, consultationFee } = request.body as {
     name?: string;
-    bio?: string;
+    avatarUrl?: string;
+    phone?: string;
     city?: string;
+    bio?: string;
     consultationFee?: number;
   };
 
@@ -119,14 +121,19 @@ export const updateProfile = asyncHandler(async (request: FastifyRequest, reply:
     where: { id: sub },
     data: {
       ...(name && { name }),
+      ...(avatarUrl !== undefined && { avatarUrl }),
+      ...(phone !== undefined && { phone }),
+      ...(city !== undefined && { city }),
     },
     include: { lawyerProfile: true },
   });
 
-  if (updatedUser.lawyerProfile && (bio || city || consultationFee)) {
+  if (updatedUser.lawyerProfile) {
     await prisma.lawyer.update({
       where: { id: updatedUser.lawyerProfile.id },
       data: {
+        ...(name && { name }),
+        ...(avatarUrl && { avatarUrl }),
         ...(bio && { bio }),
         ...(city && { city }),
         ...(consultationFee !== undefined && { consultationFee: Number(consultationFee) }),

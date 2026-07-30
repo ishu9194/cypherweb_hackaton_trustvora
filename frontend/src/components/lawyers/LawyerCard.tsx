@@ -12,6 +12,7 @@ import { formatCurrency, cn } from "@/lib/utils";
 import { MAX_COMPARE, useCompareStore } from "@/hooks/useCompareStore";
 import { useFavoritesStore } from "@/hooks/useFavoritesStore";
 import { lawyersService } from "@/services/api/lawyers.service";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 interface LawyerCardProps {
   lawyer: Lawyer;
@@ -22,28 +23,33 @@ export const LawyerCard = memo(function LawyerCard({ lawyer, className }: Lawyer
   const navigate = useNavigate();
   const { isFavorited, toggleFavorite } = useFavoritesStore();
   const { isCompared, toggleCompare, isFull } = useCompareStore();
+  const { requireAuth } = useAuthGuard();
   const [shared, setShared] = useState(false);
 
   const favorited = isFavorited(lawyer.id);
   const compared = isCompared(lawyer.id);
 
-  const handleToggleFavorite = async () => {
-    toggleFavorite(lawyer.id);
-    try {
-      await lawyersService.toggleSaveLawyer(lawyer.id);
-    } catch {
-      // Fall back to local store
-    }
-    toast.success(favorited ? `Removed ${lawyer.name} from favorites` : `Added ${lawyer.name} to favorites`);
+  const handleToggleFavorite = () => {
+    requireAuth(async () => {
+      toggleFavorite(lawyer.id);
+      try {
+        await lawyersService.toggleSaveLawyer(lawyer.id);
+      } catch {
+        // Fall back to local store
+      }
+      toast.success(favorited ? `Removed ${lawyer.name} from favorites` : `Added ${lawyer.name} to favorites`);
+    }, "Please log in to save lawyers to your favorites");
   };
 
   const handleToggleCompare = () => {
-    if (!compared && isFull) {
-      toast.error(`You can compare up to ${MAX_COMPARE} lawyers at a time`);
-      return;
-    }
-    toggleCompare(lawyer.id);
-    toast.success(compared ? "Removed from comparison" : `Added ${lawyer.name} to comparison`);
+    requireAuth(() => {
+      if (!compared && isFull) {
+        toast.error(`You can compare up to ${MAX_COMPARE} lawyers at a time`);
+        return;
+      }
+      toggleCompare(lawyer.id);
+      toast.success(compared ? "Removed from comparison" : `Added ${lawyer.name} to comparison`);
+    }, "Please log in to compare lawyers");
   };
 
   const handleShare = () => {
@@ -53,7 +59,9 @@ export const LawyerCard = memo(function LawyerCard({ lawyer, className }: Lawyer
   };
 
   const handleChatNow = () => {
-    navigate(`${ROUTES.clientMessages}?lawyerId=${lawyer.id}&lawyerName=${encodeURIComponent(lawyer.name)}`);
+    requireAuth(() => {
+      navigate(`${ROUTES.clientMessages}?lawyerId=${lawyer.id}&lawyerName=${encodeURIComponent(lawyer.name)}`);
+    }, "Please log in to chat with a lawyer");
   };
 
   return (
@@ -132,7 +140,7 @@ export const LawyerCard = memo(function LawyerCard({ lawyer, className }: Lawyer
             Profile
           </Link>
         </Button>
-        <Button size="sm" className="flex-1" onClick={() => navigate(ROUTES.bookLawyer(lawyer.id))}>
+        <Button size="sm" className="flex-1" onClick={() => requireAuth(() => navigate(ROUTES.bookLawyer(lawyer.id)), "Please log in to book a consultation")}>
           <CalendarCheck className="h-3.5 w-3.5" />
           Book
         </Button>

@@ -9,6 +9,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<User>;
   register: (name: string, email: string, password: string, role?: UserRole) => Promise<User>;
   logout: () => Promise<void>;
+  updateUser: (updatedData: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -59,8 +60,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const updateUser = (updatedData: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      const next = { ...prev, ...updatedData };
+      localStorage.setItem("trustix_auth_user", JSON.stringify(next));
+      return next;
+    });
+  };
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isAuthenticated: !!user, isLoading, login, register, logout }),
+    () => ({ user, isAuthenticated: !!user, isLoading, login, register, logout, updateUser }),
     [user, isLoading],
   );
 

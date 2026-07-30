@@ -92,6 +92,7 @@ export function Navbar() {
             <button
               type="button"
               aria-label="Notifications"
+              onClick={() => navigate(user?.role === "lawyer" ? ROUTES.lawyerNotifications : user?.role === "admin" ? ROUTES.adminNotifications : ROUTES.clientNotifications)}
               className="relative hidden h-10 w-10 items-center justify-center rounded-full text-foreground transition-colors hover:bg-surface-sunken sm:flex"
             >
               <Bell className="h-4.5 w-4.5" />

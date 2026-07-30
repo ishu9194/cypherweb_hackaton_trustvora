@@ -9,7 +9,6 @@ export const ROUTES = {
   practiceAreas: "/practice-areas",
   services: "/services",
   pricing: "/pricing",
-  blog: "/blog",
   about: "/about",
   contact: "/contact",
   lawyerProfile: (id: string = ":id") => `/lawyers/${id}`,
@@ -48,6 +47,7 @@ export const ROUTES = {
   lawyerPayments: "/lawyer/payments",
   lawyerReviews: "/lawyer/reviews",
   lawyerAnalytics: "/lawyer/analytics",
+  lawyerNotifications: "/lawyer/notifications",
   lawyerSettings: "/lawyer/settings",
 
   // Admin
@@ -58,6 +58,7 @@ export const ROUTES = {
   adminPayments: "/admin/payments",
   adminSupport: "/admin/support",
   adminReports: "/admin/reports",
+  adminNotifications: "/admin/notifications",
 
   // System
   styleGuide: "/style-guide",

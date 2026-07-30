@@ -13,6 +13,8 @@ interface BackendUser {
   role: BackendRole;
   createdAt: string;
   avatarUrl?: string;
+  phone?: string;
+  city?: string;
   lawyerProfile?: unknown;
 }
 
@@ -32,6 +34,8 @@ function toFrontendUser(user: BackendUser): User {
     email: user.email,
     role: toRole(user.role),
     avatarUrl: user.avatarUrl,
+    phone: user.phone,
+    city: user.city,
   };
 }
 
@@ -88,5 +92,12 @@ export const authService = {
   getStoredUser(): User | null {
     const raw = localStorage.getItem(STORAGE_KEYS.authUser);
     return raw ? (JSON.parse(raw) as User) : null;
+  },
+
+  async updateProfile(data: { name?: string; avatarUrl?: string; phone?: string; city?: string }): Promise<User> {
+    const updated = await apiClient.patch<BackendUser>("/auth/profile", data);
+    const frontendUser = toFrontendUser(updated);
+    localStorage.setItem(STORAGE_KEYS.authUser, JSON.stringify(frontendUser));
+    return frontendUser;
   },
 };

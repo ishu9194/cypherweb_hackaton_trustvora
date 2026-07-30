@@ -9,7 +9,6 @@ export const NAV_LINKS: { label: string; href: string }[] = [
   { label: "Practice Areas", href: ROUTES.practiceAreas },
   { label: "Services", href: ROUTES.services },
   { label: "Pricing", href: ROUTES.pricing },
-  { label: "Blog", href: ROUTES.blog },
   { label: "About", href: ROUTES.about },
   { label: "Contact", href: ROUTES.contact },
 ];

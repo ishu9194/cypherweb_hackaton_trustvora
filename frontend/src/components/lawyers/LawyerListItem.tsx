@@ -12,11 +12,13 @@ import { MAX_COMPARE, useCompareStore } from "@/hooks/useCompareStore";
 import { useFavoritesStore } from "@/hooks/useFavoritesStore";
 import { ROUTES } from "@/constants/routes.constants";
 import { lawyersService } from "@/services/api/lawyers.service";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 export const LawyerListItem = memo(function LawyerListItem({ lawyer, className }: { lawyer: Lawyer; className?: string }) {
   const navigate = useNavigate();
   const { isFavorited, toggleFavorite } = useFavoritesStore();
   const { isCompared, toggleCompare, isFull } = useCompareStore();
+  const { requireAuth } = useAuthGuard();
   const favorited = isFavorited(lawyer.id);
   const compared = isCompared(lawyer.id);
 
@@ -61,7 +63,7 @@ export const LawyerListItem = memo(function LawyerListItem({ lawyer, className }
               size="icon"
               variant="ghost"
               aria-label="Favorite"
-              onClick={async () => {
+              onClick={() => requireAuth(async () => {
                 toggleFavorite(lawyer.id);
                 try {
                   await lawyersService.toggleSaveLawyer(lawyer.id);
@@ -69,7 +71,7 @@ export const LawyerListItem = memo(function LawyerListItem({ lawyer, className }
                   // Fall back
                 }
                 toast.success(favorited ? "Removed from favorites" : "Added to favorites");
-              }}
+              }, "Please log in to save lawyers to your favorites")}
             >
               <Heart className={cn("h-4 w-4", favorited && "fill-danger text-danger")} />
             </Button>
@@ -80,11 +82,11 @@ export const LawyerListItem = memo(function LawyerListItem({ lawyer, className }
               variant="ghost"
               aria-label="Compare"
               className={cn(compared && "text-brand-600")}
-              onClick={() => {
+              onClick={() => requireAuth(() => {
                 if (!compared && isFull) { toast.error(`You can compare up to ${MAX_COMPARE} lawyers at a time`); return; }
                 toggleCompare(lawyer.id);
                 toast.success(compared ? "Removed from comparison" : "Added to comparison");
-              }}
+              }, "Please log in to compare lawyers")}
             >
               <ScaleIcon className="h-4 w-4" />
             </Button>
@@ -94,7 +96,7 @@ export const LawyerListItem = memo(function LawyerListItem({ lawyer, className }
               size="icon"
               variant="ghost"
               aria-label="Chat"
-              onClick={() => navigate(`/dashboard/messages?lawyerId=${lawyer.id}&lawyerName=${encodeURIComponent(lawyer.name)}`)}
+              onClick={() => requireAuth(() => navigate(`/dashboard/messages?lawyerId=${lawyer.id}&lawyerName=${encodeURIComponent(lawyer.name)}`), "Please log in to chat with a lawyer")}
             >
               <MessageCircle className="h-4 w-4" />
             </Button>
@@ -110,7 +112,7 @@ export const LawyerListItem = memo(function LawyerListItem({ lawyer, className }
           <Button variant="outline" size="sm" asChild>
             <Link to={ROUTES.lawyerProfile(lawyer.id)}>Profile</Link>
           </Button>
-          <Button size="sm" onClick={() => navigate(ROUTES.bookLawyer(lawyer.id))}>
+          <Button size="sm" onClick={() => requireAuth(() => navigate(ROUTES.bookLawyer(lawyer.id)), "Please log in to book a consultation")}>
             <CalendarCheck className="h-3.5 w-3.5" /> Book
           </Button>
         </div>

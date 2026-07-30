@@ -5,6 +5,8 @@ export interface User {
   name: string;
   email: string;
   avatarUrl?: string;
+  phone?: string;
+  city?: string;
   role: UserRole;
 }
 
@@ -143,10 +145,16 @@ export type CaseStatus = "open" | "in-progress" | "closed";
 export interface LegalCase {
   id: string;
   title: string;
+  description?: string;
   practiceArea: string;
   status: CaseStatus;
+  priority?: "low" | "medium" | "high";
   progress: number; // 0-100
-  lawyerName: string;
+  lawyerName?: string | null;
+  lawyerAvatarUrl?: string | null;
+  notes?: string;
+  documents?: { id: string; name: string; sizeLabel: string; url?: string; category: string }[];
+  createdAt?: string;
   updatedAt: string;
 }
 
