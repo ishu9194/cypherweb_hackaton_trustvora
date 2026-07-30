@@ -128,3 +128,59 @@ export const sendLawyerReply = asyncHandler(async (req: FastifyRequest, reply: F
 
   return reply.send({ success: true, data: formatted });
 });
+
+export const getLawyerClients = asyncHandler(async (req: FastifyRequest, reply: FastifyReply) => {
+  const userPayload = req.user as any;
+  const userId = userPayload?.sub || userPayload?.id;
+  if (!userId) throw new HttpError(401, "Unauthorized");
+
+  const lawyer = await prisma.lawyer.findUnique({ where: { userId } });
+  const lawyerId = lawyer?.id ?? userId;
+
+  const [cases, appointments] = await Promise.all([
+    prisma.case.findMany({
+      where: { lawyerId },
+      include: { client: { select: { id: true, name: true, email: true } } },
+    }),
+    prisma.appointment.findMany({
+      where: { lawyerId },
+      include: { client: { select: { id: true, name: true, email: true } } },
+    }),
+  ]);
+
+  const clientMap = new Map<string, { id: string; name: string; email?: string; casesCount: number; status: string }>();
+
+  for (const c of cases) {
+    if (!c.client) continue;
+    const existing = clientMap.get(c.clientId) || {
+      id: c.clientId,
+      name: c.client.name,
+      email: c.client.email || undefined,
+      casesCount: 0,
+      status: "Inactive",
+    };
+    existing.casesCount += 1;
+    if (c.status === "open" || c.status === "in_progress") {
+      existing.status = "Active";
+    }
+    clientMap.set(c.clientId, existing);
+  }
+
+  for (const a of appointments) {
+    const clientId = a.clientId;
+    const clientName = a.clientName || a.client?.name || "Client";
+    const existing = clientMap.get(clientId) || {
+      id: clientId,
+      name: clientName,
+      email: a.client?.email || undefined,
+      casesCount: 0,
+      status: "Active",
+    };
+    if (a.status === ("upcoming" as any) || a.status === ("completed" as any) || a.status === ("pending" as any)) {
+      existing.status = "Active";
+    }
+    clientMap.set(clientId, existing);
+  }
+
+  return reply.send({ success: true, data: Array.from(clientMap.values()) });
+});

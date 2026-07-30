@@ -34,6 +34,14 @@ export const lawyerDashboardService = {
     }
   },
 
+  async getClients(): Promise<{ id: string; name: string; email?: string; casesCount: number; status: string }[]> {
+    try {
+      return await apiClient.get<any[]>("/lawyer/clients");
+    } catch {
+      return [];
+    }
+  },
+
   async sendReply(conversationId: string, text: string): Promise<{ success: boolean }> {
     try {
       return await apiClient.post<{ success: boolean }>(`/lawyer/conversations/${conversationId}/reply`, { text });
