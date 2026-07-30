@@ -107,7 +107,13 @@ export const me = asyncHandler(async (request: FastifyRequest, reply: FastifyRep
 });
 
 export const updateProfile = asyncHandler(async (request: FastifyRequest, reply: FastifyReply) => {
-  const { sub } = request.user as { sub: string };
+  const userPayload = request.user as any;
+  const userId = userPayload?.sub || userPayload?.id;
+
+  if (!userId) {
+    throw new HttpError(401, "Unauthorized user session");
+  }
+
   const { name, avatarUrl, phone, city, bio, consultationFee } = request.body as {
     name?: string;
     avatarUrl?: string;
@@ -118,7 +124,7 @@ export const updateProfile = asyncHandler(async (request: FastifyRequest, reply:
   };
 
   const updatedUser = await prisma.user.update({
-    where: { id: sub },
+    where: { id: userId },
     data: {
       ...(name && { name }),
       ...(avatarUrl !== undefined && { avatarUrl }),
@@ -142,7 +148,7 @@ export const updateProfile = asyncHandler(async (request: FastifyRequest, reply:
   }
 
   const finalUser = await prisma.user.findUnique({
-    where: { id: sub },
+    where: { id: userId },
     include: { lawyerProfile: true },
   });
 

@@ -19,8 +19,9 @@ export const listLawyers = asyncHandler(async (request: FastifyRequest, reply: F
     ...(query.search && {
       OR: [
         { name: { contains: query.search, mode: "insensitive" } },
-        { bio: { contains: query.search, mode: "insensitive" } },
         { city: { contains: query.search, mode: "insensitive" } },
+        { court: { contains: query.search, mode: "insensitive" } },
+        { qualification: { contains: query.search, mode: "insensitive" } },
       ],
     }),
     ...(query.practiceArea && { specializations: { has: query.practiceArea } }),
